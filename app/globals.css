@@ -1,26 +1,109 @@
 @import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+
+  /* Novaclinx custom tokens */
+  --color-ai-note-bg: var(--ai-note-bg);
+  --color-ai-accent: var(--ai-accent);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-destructive-bg: var(--destructive-bg);
+  --color-primary-hover: var(--primary-hover);
+  --color-placeholder: var(--placeholder);
+
+  /* Radius */
+  --radius-sm: var(--radius-input);
+  --radius-md: var(--radius-button);
+  --radius-lg: var(--radius-card);
+  --radius-badge: var(--radius-badge);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  /* Novaclinx brand colors */
+  --background: #F7F7F4;
+  --foreground: #0F172A;
+  --card: #FFFFFF;
+  --card-foreground: #0F172A;
+  --popover: #FFFFFF;
+  --popover-foreground: #0F172A;
+  --primary: #0F766E;
+  --primary-foreground: #FFFFFF;
+  --primary-hover: #0E6A63;
+  --secondary: #F1F5F9;
+  --secondary-foreground: #0F172A;
+  --muted: #F1F5F9;
+  --muted-foreground: #475569;
+  --placeholder: #94A3B8;
+  --accent: #F1F5F9;
+  --accent-foreground: #0F172A;
+  --destructive: #DC2626;
+  --destructive-bg: #FEE2E2;
+  --border: #E5E7EB;
+  --input: #E5E7EB;
+  --ring: #0F766E;
+
+  /* Novaclinx semantic tokens */
+  --ai-note-bg: #EEF2FF;
+  --ai-accent: #6366F1;
+  --success: #15803D;
+  --success-bg: #DCFCE7;
+  --warning: #D97706;
+  --warning-bg: #FEF3C7;
+
+  /* Radius tokens */
+  --radius-card: 0.75rem;    /* 12px */
+  --radius-button: 0.625rem; /* 10px */
+  --radius-input: 0.5rem;    /* 8px */
+  --radius-badge: 999px;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+
+  /* Minimum touch targets for mobile */
+  button,
+  [role="button"],
+  a {
+    min-height: 44px;
+    min-width: 44px;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Novaclinx AI note styles */
+.ai-note {
+  background-color: var(--ai-note-bg);
+  border-left: 3px solid var(--ai-accent);
 }

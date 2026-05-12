@@ -23,6 +23,7 @@
 # misc
 .DS_Store
 *.pem
+*.key
 
 # debug
 npm-debug.log*
@@ -30,8 +31,14 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files
+# .env.local NUNCA sube a GitHub — cubierto por el patrón .env* de abajo
+# .env.local.example SÍ puede subir — solo tiene valores de ejemplo sin secretos reales
 .env*
+# Excluir explícitamente cualquier archivo .local con secretos
+*.local
+# Permitir el ejemplo (no tiene secretos)
+!.env.local.example
 
 # vercel
 .vercel
