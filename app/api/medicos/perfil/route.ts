@@ -30,10 +30,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const parsed = body as Record<string, unknown>;
+
   if (
     typeof body !== "object" ||
     body === null ||
-    !isValidEspecialidad((body as Record<string, unknown>).especialidad)
+    !isValidEspecialidad(parsed.especialidad) ||
+    typeof parsed.nombre !== "string" ||
+    parsed.nombre.trim().length === 0
   ) {
     return NextResponse.json(
       { error: "No pudimos completar la acción. Intenta de nuevo." },
@@ -41,19 +45,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const especialidad = (body as { especialidad: Especialidad }).especialidad;
+  const especialidad = parsed.especialidad as Especialidad;
+  const nombre = (parsed.nombre as string).trim();
 
   try {
     const supabase = await createSupabaseServerClient();
-
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser();
-
-    const nombre =
-      (authUser?.user_metadata?.full_name as string | undefined) ??
-      (authUser?.user_metadata?.name as string | undefined) ??
-      "Médico";
 
     const { data, error } = await supabase
       .from("medicos")

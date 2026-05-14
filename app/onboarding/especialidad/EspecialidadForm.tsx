@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 const ESPECIALIDADES = [
@@ -15,10 +15,19 @@ type Especialidad = (typeof ESPECIALIDADES)[number]["value"];
 
 export default function EspecialidadForm() {
   const router = useRouter();
+  const nombreRef = useRef<HTMLInputElement>(null);
+
+  const [nombre, setNombre] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSelect(especialidad: Especialidad) {
+    if (!nombre.trim()) {
+      setError("Ingresa tu nombre antes de continuar.");
+      nombreRef.current?.focus();
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -26,7 +35,7 @@ export default function EspecialidadForm() {
       const res = await fetch("/api/medicos/perfil", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ especialidad }),
+        body: JSON.stringify({ nombre: nombre.trim(), especialidad }),
         credentials: "include",
       });
 
@@ -47,10 +56,10 @@ export default function EspecialidadForm() {
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-[#0F172A] tracking-tight">Novaclinx</h1>
           <p className="mt-3 text-base font-semibold text-[#0F172A]">
-            ¿Cuál es tu especialidad?
+            Cuéntanos sobre ti
           </p>
           <p className="mt-1 text-sm text-[#475569]">
-            Personalizamos tus notas según tu área clínica.
+            Solo lo necesario para personalizar tus notas.
           </p>
         </div>
 
@@ -62,6 +71,32 @@ export default function EspecialidadForm() {
             {error}
           </div>
         )}
+
+        {/* Nombre */}
+        <div className="mb-6">
+          <label
+            htmlFor="nombre"
+            className="block text-sm font-medium text-[#374151] mb-1.5"
+          >
+            Tu nombre completo
+          </label>
+          <input
+            ref={nombreRef}
+            id="nombre"
+            type="text"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            disabled={loading}
+            autoComplete="name"
+            placeholder="Ej. Dra. Ana Morales"
+            className="w-full h-11 px-3 bg-white border border-[#D1D5DB] rounded-lg text-sm text-[#0F172A] placeholder-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:opacity-50"
+          />
+        </div>
+
+        {/* Especialidad */}
+        <p className="text-sm font-medium text-[#374151] mb-2">
+          ¿Cuál es tu especialidad?
+        </p>
 
         <div className="space-y-2" role="list" aria-label="Especialidades médicas">
           {ESPECIALIDADES.map(({ value, label }) => (
