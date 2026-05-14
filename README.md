@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Novaclinx
 
-## Getting Started
+Generador de notas clínicas SOAP para médicos independientes en Ecuador y Latinoamérica.
 
-First, run the development server:
+Novaclinx es una aplicación web mobile-first donde el médico escribe 3–5 líneas de lo que pasó en una consulta y la app genera una nota clínica estructurada en formato SOAP, lista para revisar, editar y aprobar.
 
-```bash
+## El problema
+
+Los médicos independientes pierden entre 2 y 3 horas diarias llenando notas clínicas después de atender pacientes. Muchos terminan el día con documentación pendiente. Es trabajo repetitivo y tedioso que les quita tiempo personal.
+
+## La solución
+
+El médico describe la consulta en sus propias palabras, Novaclinx genera el borrador y el médico lo revisa y aprueba. La nota siempre es del médico; la aplicación solo la estructura.
+
+Novaclinx no diagnostica, no prescribe y no reemplaza el criterio médico. Su único alcance es generar borradores de documentación clínica.
+
+## Usuario objetivo
+
+Pediatras y ginecólogos con consultorio propio en Ecuador, de 30 a 55 años, con un volumen de 15 a 25 pacientes por día.
+
+## Funcionalidades
+
+Incluye:
+- Crear y buscar pacientes
+- Nueva consulta por texto (audio opcional)
+- Generación de nota clínica en formato SOAP
+- Indicaciones y seguimiento solo si el médico los menciona
+- Historial básico y resumen de la última consulta
+- Dashboard de seguimientos
+- Copiar nota y exportar a PDF
+- Importación de pacientes anteriores vía CSV
+- Demo de onboarding
+
+No incluye: diagnóstico automático, prescripción autónoma, cobros, agenda, integración con WhatsApp API, facturación ni multi-usuario.
+
+## Stack técnico
+
+| Componente | Tecnología |
+|---|---|
+| Framework | Next.js 16 |
+| Base de datos | Supabase |
+| Modelo de lenguaje | GPT-4o-mini |
+| Estilos | Tailwind CSS, shadcn/ui |
+| Despliegue | Vercel |
+
+El prompt clínico fue validado con 7 casos de prueba, incluyendo un caso trampa y un caso de estrés con contexto de consultas anteriores.
+
+## Estado actual
+
+Fase 1 de construcción completada. La base del proyecto está lista: branding, tokens de color, tipografía, prompt clínico, schema SQL, autenticación, middleware, headers de seguridad, logger médico seguro y páginas legales.
+
+Pendiente: conexión con Supabase en producción e inicio de la Fase 2 (autenticación y base de datos en vivo).
+
+## Setup
+
+\`\`\`bash
+# Instalar dependencias
+npm install
+
+# Correr el servidor de desarrollo
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+\`\`\`
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abrir http://localhost:3000 en el navegador para ver la aplicación.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Autor
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Joaquín Brito Torres — github.com/joaquinbritotorres-dev
