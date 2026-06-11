@@ -2,11 +2,19 @@
 
 import { useState, useEffect } from "react";
 import ResultadoConsulta from "./ResultadoConsulta";
+import type { MedicamentoPropuesto } from "@/lib/recetas/tipos";
 
-// Inline type — lib/prompts/generate-soap.ts is server-only
 interface SoapOutput {
-  soap: string;
-  indicaciones: string[] | null;
+  soap: {
+    subjetivo: string;
+    objetivo: string;
+    analisis: string;
+    plan: string;
+  };
+  cie10_codigo: string;
+  cie10_descripcion: string;
+  indicaciones: MedicamentoPropuesto[] | null;
+  signos_alarma: string[];
   seguimiento_plazo: string | null;
   seguimiento_motivo: string | null;
   resumen_corto: string;
@@ -90,7 +98,7 @@ export default function NuevaConsultaForm({ pacienteId }: Props) {
     <div>
       {/* Input area — hidden while showing result */}
       {!resultado && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div>
             <textarea
               value={descripcion}
@@ -99,7 +107,7 @@ export default function NuevaConsultaForm({ pacienteId }: Props) {
               rows={8}
               maxLength={4999}
               placeholder='Describe la consulta en tus palabras. Por ejemplo: paciente de 4 años con fiebre de 38.5 desde ayer, sin otros síntomas. Al examen faringe levemente eritematosa. Diagnóstico: faringoamigdalitis viral. Paracetamol 15mg/kg c/6h por 3 días si fiebre. Control en 5 días si no mejora.'
-              className="w-full px-3 py-3 bg-white border border-[#D1D5DB] rounded-xl text-sm text-[#0F172A] placeholder-[#9CA3AF] leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:opacity-50 resize-none"
+              className="w-full px-3 py-3 bg-white border border-[#D1D5DB] rounded-xl text-sm text-[#0F172A] placeholder-[#94A3B8] leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:opacity-50 resize-none"
             />
             <div className="flex justify-between items-center mt-1 px-1">
               <span

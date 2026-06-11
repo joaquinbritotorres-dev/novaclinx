@@ -139,3 +139,38 @@ CREATE INDEX IF NOT EXISTS idx_consultas_seguimiento
   ON consultas(medico_id, seguimiento_fecha)
   WHERE seguimiento_fecha IS NOT NULL
     AND seguimiento_completado = FALSE;
+
+-- ─── Integración Dátil ───────────────────────────────────────
+ALTER TABLE pacientes
+ADD COLUMN IF NOT EXISTS identificacion TEXT,
+ADD COLUMN IF NOT EXISTS tipo_identificacion TEXT CHECK (tipo_identificacion IN ('04', '05', '06', '07')),
+ADD COLUMN IF NOT EXISTS email TEXT,
+ADD COLUMN IF NOT EXISTS direccion TEXT;
+
+CREATE TABLE IF NOT EXISTS facturas (
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  consulta_id     UUID        NOT NULL UNIQUE REFERENCES consultas(id) ON DELETE CASCADE,
+  medico_id       UUID        NOT NULL REFERENCES medicos(id) ON DELETE CASCADE,
+  estado          TEXT        NOT NULL CHECK (estado IN ('pendiente', 'emitida', 'autorizada', 'error')),
+  datil_id        TEXT,
+  clave_acceso    TEXT,
+  monto           NUMERIC(10,2) NOT NULL,
+  error_mensaje   TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE OR REPLACE TRIGGER trg_facturas_updated_at
+  BEFORE UPDATE ON facturas
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+ALTER TABLE facturas ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY facturas_own_all ON facturas
+  FOR ALL
+  USING (medico_id IN (SELECT id FROM medicos WHERE user_id = auth.uid()))
+  WITH CHECK (medico_id IN (SELECT id FROM medicos WHERE user_id = auth.uid()));
+
+CREATE INDEX IF NOT EXISTS idx_facturas_consulta ON facturas(consulta_id);
+CREATE INDEX IF NOT EXISTS idx_facturas_medico ON facturas(medico_id);
+CREATE INDEX IF NOT EXISTS idx_facturas_estado ON facturas(estado);

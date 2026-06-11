@@ -88,6 +88,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    line-height: 1.6;
   }
   html {
     @apply font-sans;
@@ -101,6 +102,10 @@
     min-width: 44px;
   }
 }
+
+/* Hide scrollbar while preserving scroll behavior */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
 
 /* Novaclinx AI note styles */
 .ai-note {

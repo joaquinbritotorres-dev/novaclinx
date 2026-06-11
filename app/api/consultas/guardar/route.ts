@@ -29,19 +29,41 @@ export async function POST(request: NextRequest) {
     paciente_id,
     input_medico,
     soap,
+    cie10_codigo,
+    cie10_descripcion,
     indicaciones,
+    signos_alarma,
     seguimiento_plazo,
     seguimiento_motivo,
     resumen_corto,
+    tipo_consulta,
   } = body as Record<string, unknown>;
 
   if (
     typeof paciente_id !== "string" ||
     !paciente_id.trim() ||
     typeof input_medico !== "string" ||
-    !input_medico.trim() ||
-    typeof soap !== "string" ||
-    !soap.trim()
+    !input_medico.trim()
+  ) {
+    return NextResponse.json(
+      { error: "No pudimos completar la acción. Intenta de nuevo." },
+      { status: 400 }
+    );
+  }
+
+  // Validate soap sections object
+  if (typeof soap !== "object" || soap === null) {
+    return NextResponse.json(
+      { error: "No pudimos completar la acción. Intenta de nuevo." },
+      { status: 400 }
+    );
+  }
+  const soapParsed = soap as Record<string, unknown>;
+  if (
+    typeof soapParsed.subjetivo !== "string" ||
+    typeof soapParsed.objetivo !== "string" ||
+    typeof soapParsed.analisis !== "string" ||
+    typeof soapParsed.plan !== "string"
   ) {
     return NextResponse.json(
       { error: "No pudimos completar la acción. Intenta de nuevo." },
@@ -80,14 +102,40 @@ export async function POST(request: NextRequest) {
         paciente_id,
         medico_id: medico.id,
         input_medico: input_medico.slice(0, 4999),
-        nota_soap: soap,
-        indicaciones: indicaciones != null ? JSON.stringify(indicaciones) : null,
-        seguimiento_plazo: typeof seguimiento_plazo === "string" ? seguimiento_plazo : null,
-        seguimiento_motivo: typeof seguimiento_motivo === "string" ? seguimiento_motivo : null,
-        resumen_corto: typeof resumen_corto === "string" ? resumen_corto : null,
+        nota_soap: JSON.stringify(soap),
+        cie10_codigo:
+          typeof cie10_codigo === "string" && cie10_codigo.trim()
+            ? cie10_codigo.trim()
+            : null,
+        cie10_descripcion:
+          typeof cie10_descripcion === "string" && cie10_descripcion.trim()
+            ? cie10_descripcion.trim()
+            : null,
+        indicaciones:
+          Array.isArray(indicaciones) && indicaciones.length > 0
+            ? JSON.stringify(indicaciones)
+            : null,
+        signos_alarma:
+          Array.isArray(signos_alarma) && signos_alarma.length > 0
+            ? JSON.stringify(signos_alarma)
+            : null,
+        seguimiento_plazo:
+          typeof seguimiento_plazo === "string" && seguimiento_plazo.trim()
+            ? seguimiento_plazo.trim()
+            : null,
+        seguimiento_motivo:
+          typeof seguimiento_motivo === "string" && seguimiento_motivo.trim()
+            ? seguimiento_motivo.trim()
+            : null,
+        resumen_corto:
+          typeof resumen_corto === "string" ? resumen_corto : null,
+        tipo_consulta:
+          typeof tipo_consulta === "string" && tipo_consulta.trim()
+            ? tipo_consulta.trim()
+            : "subsecuente",
         aprobada_por_medico: true,
         aprobada_en: new Date().toISOString(),
-        modelo_usado: "gpt-4o-mini",
+        modelo_usado: "gpt-4o",
       })
       .select("id")
       .single();

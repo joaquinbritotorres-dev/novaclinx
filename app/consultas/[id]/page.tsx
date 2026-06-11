@@ -1,8 +1,11 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import CopiarNotaButton from "./CopiarNotaButton";
-import CompartirNotaButton from "./CompartirNotaButton";
+import FacturacionSection from "./FacturacionSection";
+import CrearReclamacionButton from "./CrearReclamacionButton";
+import DescargasSection from "./DescargasSection";
+import { parseIndicaciones } from "@/lib/recetas/parseIndicaciones";
+import BotonWhatsApp from "@/components/BotonWhatsApp";
 
 const SOAP_LABELS: Record<string, string> = {
   S: "Subjetivo",
@@ -12,10 +15,27 @@ const SOAP_LABELS: Record<string, string> = {
 };
 
 function parseSoapSections(
-  soap: string
+  notaSoap: string
 ): { key: string; label: string; content: string }[] {
-  // Split on newlines immediately followed by a SOAP section letter and colon
-  const parts = soap.split(/\n(?=[SOAP]:)/);
+  // New structured JSON format
+  try {
+    const parsed = JSON.parse(notaSoap);
+    if (parsed && typeof parsed === "object" && "subjetivo" in parsed) {
+      return (
+        [
+          { key: "S", label: "S — Subjetivo", content: String(parsed.subjetivo ?? "") },
+          { key: "O", label: "O — Objetivo", content: String(parsed.objetivo ?? "") },
+          { key: "A", label: "A — Análisis", content: String(parsed.analisis ?? "") },
+          { key: "P", label: "P — Plan", content: String(parsed.plan ?? "") },
+        ] as { key: string; label: string; content: string }[]
+      ).filter((s) => s.content);
+    }
+  } catch {
+    // fall through to legacy parser
+  }
+
+  // Legacy flat string format: "S: ...\nO: ...\nA: ...\nP: ..."
+  const parts = notaSoap.split(/\n(?=[SOAP]:)/);
   return parts
     .map((part) => {
       const match = part.match(/^([SOAP]):\s*([\s\S]*)/);
@@ -30,7 +50,7 @@ function parseSoapSections(
     .filter((p): p is { key: string; label: string; content: string } => p !== null);
 }
 
-function parseIndicaciones(raw: string | null): string[] | null {
+function parseJsonArray(raw: string | null): string[] | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw);
@@ -39,6 +59,25 @@ function parseIndicaciones(raw: string | null): string[] | null {
   } catch {
     return null;
   }
+}
+
+function buildNoteText(notaSoap: string): string {
+  try {
+    const parsed = JSON.parse(notaSoap);
+    if (parsed && typeof parsed === "object" && "subjetivo" in parsed) {
+      return [
+        `S — SUBJETIVO\n${parsed.subjetivo}`,
+        `O — OBJETIVO\n${parsed.objetivo}`,
+        `A — ANÁLISIS\n${parsed.analisis}`,
+        `P — PLAN\n${parsed.plan}`,
+      ]
+        .filter((s) => s.split("\n")[1])
+        .join("\n\n");
+    }
+  } catch {
+    // fall through
+  }
+  return notaSoap;
 }
 
 export default async function ConsultaPage({
@@ -56,7 +95,7 @@ export default async function ConsultaPage({
 
   const { data: medico } = await supabase
     .from("medicos")
-    .select("id")
+    .select("id, firma_object_key, google_review_url")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -66,7 +105,7 @@ export default async function ConsultaPage({
   const { data: consulta } = await supabase
     .from("consultas")
     .select(
-      "id, fecha, nota_soap, indicaciones, seguimiento_plazo, seguimiento_motivo, paciente_id, pacientes(id, nombre)"
+      "id, fecha, nota_soap, indicaciones, signos_alarma, cie10_codigo, cie10_descripcion, seguimiento_plazo, seguimiento_motivo, paciente_id, pacientes(id, nombre, cedula, identificacion, tipo_identificacion, telefono)"
     )
     .eq("id", id)
     .eq("medico_id", medico.id)
@@ -74,14 +113,36 @@ export default async function ConsultaPage({
 
   if (!consulta) notFound();
 
-  const paciente = consulta.pacientes as unknown as { id: string; nombre: string } | null;
+  const paciente = consulta.pacientes as unknown as {
+    id: string;
+    nombre: string;
+    cedula: string | null;
+    identificacion: string | null;
+    tipo_identificacion: string | null;
+    telefono: string | null;
+  } | null;
+
+  const { data: factura } = await supabase
+    .from("facturas")
+    .select("id, estado, datil_id, clave_acceso, error_mensaje")
+    .eq("consulta_id", consulta.id)
+    .maybeSingle();
+
+  const { data: segurosPaciente } = await supabase
+    .from("paciente_seguros")
+    .select("id, tipo_cobertura, aseguradoras(nombre)")
+    .eq("paciente_id", paciente?.id ?? "")
+    .is("deleted_at", null);
+
   const secciones = parseSoapSections(consulta.nota_soap ?? "");
-  const indicaciones = parseIndicaciones(consulta.indicaciones);
+  const indicacionesParsed = parseIndicaciones(consulta.indicaciones);
+  const signosAlarma = parseJsonArray(consulta.signos_alarma);
   const tieneSeguimiento = typeof consulta.seguimiento_plazo === "string";
+  const textoCopia = buildNoteText(consulta.nota_soap ?? "");
 
   return (
-    <main className="min-h-screen bg-[#F7F7F4] px-4 py-8">
-      <div className="w-full max-w-lg mx-auto">
+    <main className="min-h-screen bg-[#F7F7F4] px-6 py-8">
+      <div className="w-full max-w-3xl mx-auto">
         {/* Header */}
         <div className="mb-5">
           <Link
@@ -105,8 +166,22 @@ export default async function ConsultaPage({
           </p>
         </div>
 
+        {/* CIE-10 — solo si existe */}
+        {consulta.cie10_codigo && (
+          <div className="bg-[#F0FDFB] border border-[#99F6E4] rounded-lg px-4 py-2.5 mb-5 flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-mono font-semibold text-[#0F766E]">
+              {consulta.cie10_codigo}
+            </span>
+            {consulta.cie10_descripcion && (
+              <span className="text-sm text-[#134E4A]">
+                {consulta.cie10_descripcion}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Nota SOAP por secciones */}
-        <div className="bg-white rounded-xl border border-[#E5E7EB] p-5 mb-4 space-y-5">
+        <div className="bg-white rounded-xl border border-[#E5E7EB] p-5 mb-5 space-y-5">
           {secciones.length > 0 ? (
             secciones.map((sec) => (
               <div key={sec.key}>
@@ -124,16 +199,53 @@ export default async function ConsultaPage({
         </div>
 
         {/* Indicaciones — solo si existen */}
-        {indicaciones && (
-          <div className="bg-white rounded-xl border border-[#E5E7EB] p-5 mb-4">
+        {indicacionesParsed && (
+          <div className="bg-white rounded-xl border border-[#E5E7EB] p-5 mb-5">
             <p className="text-xs font-bold text-[#0F766E] uppercase tracking-wide mb-3">
-              Indicaciones
+              {indicacionesParsed.tipo === "estructurado" ? "Medicamentos prescritos" : "Indicaciones al paciente"}
+            </p>
+            <ul className="space-y-2">
+              {indicacionesParsed.tipo === "estructurado"
+                ? indicacionesParsed.medicamentos.map((m, idx) => (
+                    <li key={idx} className="text-sm text-[#0F172A]">
+                      <span className="font-medium capitalize">{m.dci}</span>
+                      {m.nombreComercial ? ` (${m.nombreComercial})` : ""}
+                      {" "}{m.formaFarmaceutica} {m.concentracion}
+                      <span className="text-[#64748B]">
+                        {" — "}{m.dosis} · {m.frecuencia} · {m.duracionDias} días
+                      </span>
+                      {m.cantidadTexto && (
+                        <span className="block text-xs text-[#0F766E] font-medium mt-0.5">
+                          Cantidad: {m.cantidadTexto}
+                        </span>
+                      )}
+                    </li>
+                  ))
+                : indicacionesParsed.indicaciones.map((item, idx) => (
+                    <li key={idx} className="flex items-start gap-2 text-sm text-[#0F172A]">
+                      <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#0F766E] shrink-0" />
+                      {item}
+                    </li>
+                  ))
+              }
+            </ul>
+          </div>
+        )}
+
+        {/* Signos de alarma — solo si existen */}
+        {signosAlarma && (
+          <div className="bg-[#FFF7ED] border border-[#FED7AA] rounded-xl p-5 mb-4">
+            <p className="text-xs font-bold text-[#C2410C] uppercase tracking-wide mb-3">
+              Signos de alarma
             </p>
             <ul className="space-y-1.5">
-              {indicaciones.map((item, idx) => (
-                <li key={idx} className="flex items-start gap-2 text-sm text-[#0F172A]">
-                  <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#0F766E] shrink-0" />
-                  {item}
+              {signosAlarma.map((signo, idx) => (
+                <li
+                  key={idx}
+                  className="flex items-start gap-2 text-sm text-[#7C2D12]"
+                >
+                  <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#EA580C] shrink-0" />
+                  {signo}
                 </li>
               ))}
             </ul>
@@ -142,12 +254,12 @@ export default async function ConsultaPage({
 
         {/* Seguimiento — solo si existe */}
         {tieneSeguimiento && (
-          <div className="bg-white rounded-xl border border-[#E5E7EB] p-5 mb-4">
+          <div className="bg-white rounded-xl border border-[#E5E7EB] p-5 mb-5">
             <p className="text-xs font-bold text-[#0F766E] uppercase tracking-wide mb-3">
-              Seguimiento
+              Próximo control
             </p>
-            <p className="text-sm text-[#0F172A]">
-              📅 {consulta.seguimiento_plazo}
+            <p className="text-sm font-medium text-[#0F172A]">
+              {consulta.seguimiento_plazo}
             </p>
             {consulta.seguimiento_motivo && (
               <p className="text-sm text-[#475569] mt-1">
@@ -157,26 +269,46 @@ export default async function ConsultaPage({
           </div>
         )}
 
+        <FacturacionSection 
+          consultaId={consulta.id} 
+          facturaExistente={factura} 
+          tieneIdentificacion={Boolean(paciente?.cedula || paciente?.identificacion)} 
+        />
+
+        {segurosPaciente && segurosPaciente.length > 0 && (
+          <div className="mb-4">
+            <CrearReclamacionButton consultaId={consulta.id} seguros={segurosPaciente as any} />
+          </div>
+        )}
+
+        {/* Pedir reseña — solo si el médico configuró su enlace de Google */}
+        {medico.google_review_url && paciente && (
+          <div className="bg-white rounded-xl border border-[#E5E7EB] p-4 mb-4 flex items-center justify-between gap-3">
+            <p className="text-sm text-[#475569]">
+              ¿Consulta exitosa? Pide una reseña a tu paciente.
+            </p>
+            <BotonWhatsApp
+              telefono={paciente.telefono}
+              texto={`Hola ${paciente.nombre}, gracias por su visita. Si quedó conforme con la atención, ¿me ayudaría dejando una reseña? Solo toma un minuto: ${medico.google_review_url}`}
+              tipo="resena"
+              paciente_id={paciente.id}
+              label="Pedir reseña"
+            />
+          </div>
+        )}
+
         {/* Disclaimer */}
         <p className="text-xs text-[#64748B] bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 py-2 mb-4">
           Novaclinx genera borradores. La nota oficial y el criterio clínico son tuyos.
         </p>
 
-        {/* Acciones de nota */}
-        <div className="flex flex-col gap-2">
-          <a
-            href={`/api/consultas/${consulta.id}/pdf`}
-            download
-            className="w-full h-11 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors inline-flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:ring-offset-2"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="shrink-0">
-              <path d="M12 3v13m0 0-4-4m4 4 4-4M4 20h16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            Descargar PDF
-          </a>
-          <CopiarNotaButton texto={consulta.nota_soap ?? ""} />
-          <CompartirNotaButton consultaId={consulta.id} texto={consulta.nota_soap ?? ""} />
-        </div>
+        <DescargasSection
+          consultaId={consulta.id}
+          tieneFirma={Boolean(medico.firma_object_key)}
+          tieneIndicaciones={Boolean(indicacionesParsed)}
+          tieneDiagnostico={Boolean(consulta.cie10_codigo)}
+          textoCopia={textoCopia}
+        />
       </div>
     </main>
   );

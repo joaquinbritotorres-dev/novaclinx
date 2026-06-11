@@ -30,6 +30,7 @@ export default async function PacientesPage({
     .from("pacientes")
     .select("id, nombre, edad")
     .eq("medico_id", medico.id)
+    .is("deleted_at", null)
     .order("nombre", { ascending: true });
 
   if (busqueda) {
@@ -60,8 +61,8 @@ export default async function PacientesPage({
   }));
 
   return (
-    <main className="min-h-screen bg-[#F7F7F4] px-4 py-8">
-      <div className="w-full max-w-lg mx-auto">
+    <main className="min-h-screen bg-[#F7F7F4] px-6 py-8">
+      <div className="w-full max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-xl font-bold text-[#0F172A]">Mis pacientes</h1>
           <Link
@@ -93,7 +94,7 @@ export default async function PacientesPage({
             )}
           </div>
         ) : (
-          <ul className="space-y-3">
+          <ul className="grid md:grid-cols-2 gap-4">
             {lista.map((p) => (
               <li key={p.id} className="bg-white rounded-xl border border-[#E5E7EB] p-4">
                 <div className="flex items-start justify-between gap-3">
