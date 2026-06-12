@@ -90,6 +90,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // "Consumidor final" (07) no es facturable: impide el reembolso del
+    // paciente ante su aseguradora y desde 2026 es irreversible ante el SRI.
+    // Guarda para datos preexistentes; la opción ya no existe en formularios.
+    if (paciente.tipo_identificacion === "07") {
+      return NextResponse.json(
+        {
+          error:
+            "Este paciente tiene tipo de identificación 'Consumidor final', que no es facturable. Edita el paciente y registra su cédula, RUC o pasaporte.",
+        },
+        { status: 422 }
+      );
+    }
+
     // Idempotencia: solo bloquear si ya hay una factura activa
     const { data: facturaActiva } = await supabase
       .from("facturas")

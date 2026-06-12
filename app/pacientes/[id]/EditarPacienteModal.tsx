@@ -319,7 +319,6 @@ export default function EditarPacienteModal({
                       <option value="05">Cédula de ciudadanía</option>
                       <option value="04">RUC</option>
                       <option value="06">Pasaporte</option>
-                      <option value="07">Consumidor final</option>
                     </select>
                   </div>
                   <div>
