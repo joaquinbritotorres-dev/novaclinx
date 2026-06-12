@@ -129,23 +129,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No pudimos completar la acción. Intenta de nuevo." }, { status: 500 });
     }
 
-    // IVA 15% (Ecuador — Ley de Reforma Tributaria 2024)
+    // IVA tarifa 0% — servicios de salud (Art. 56 num. 2, Ley de Régimen
+    // Tributario Interno). El desglose "SUBTOTAL 0%" debe constar en el RIDE,
+    // por eso base_imponible lleva el monto y codigo_porcentaje es "0".
     const base = Number(montoNum.toFixed(2));
-    const ivaValor = Number((base * 0.15).toFixed(2));
-    const total = Number((base + ivaValor).toFixed(2));
+    const ivaValor = 0;
+    const total = base;
 
     // tarifa solo va en items, no en totales (Dátil rechaza tarifa en totales)
     const impuestoItem: DatilImpuesto = {
       codigo: "2",
-      codigo_porcentaje: "4", // IVA 15% Ecuador 2024+
+      codigo_porcentaje: "0", // IVA 0% (Tabla 17 SRI)
       base_imponible: base,
-      tarifa: 15,
+      tarifa: 0,
       valor: ivaValor,
     };
 
     const impuestoTotal: Omit<DatilImpuesto, "tarifa"> = {
       codigo: "2",
-      codigo_porcentaje: "4",
+      codigo_porcentaje: "0",
       base_imponible: base,
       valor: ivaValor,
     };
