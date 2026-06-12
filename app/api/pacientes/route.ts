@@ -8,7 +8,7 @@ import { CONSENTIMIENTO_DATOS_VERSION } from "@/lib/consentimiento";
 const VALID_SEGUROS = ["ninguno", "iess", "issfa", "privado"] as const;
 type TipoSeguro = (typeof VALID_SEGUROS)[number];
 
-const VALID_TIPO_ID = ["04", "05", "06", "07"] as const;
+const VALID_TIPO_ID = ["04", "05", "06"] as const;
 type TipoIdentificacion = (typeof VALID_TIPO_ID)[number];
 
 function isValidTipoId(v: unknown): v is TipoIdentificacion {
