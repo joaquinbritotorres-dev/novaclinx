@@ -101,6 +101,36 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Médico no encontrado." }, { status: 403 });
   }
 
+  // Guardas de propiedad sobre las referencias opcionales
+  if (paciente_id) {
+    const { data: paciente } = await supabase
+      .from("pacientes")
+      .select("id")
+      .eq("id", paciente_id)
+      .eq("medico_id", medico.id)
+      .maybeSingle();
+    if (!paciente) {
+      return NextResponse.json(
+        { error: "Paciente no encontrado." },
+        { status: 404 }
+      );
+    }
+  }
+  if (cita_id) {
+    const { data: cita } = await supabase
+      .from("citas")
+      .select("id")
+      .eq("id", cita_id)
+      .eq("medico_id", medico.id)
+      .maybeSingle();
+    if (!cita) {
+      return NextResponse.json(
+        { error: "Cita no encontrada." },
+        { status: 404 }
+      );
+    }
+  }
+
   const { data: comunicacion, error } = await supabase
     .from("comunicaciones")
     .insert({

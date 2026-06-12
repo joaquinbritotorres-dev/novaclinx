@@ -108,8 +108,8 @@ export default async function PacientePerfilPage({
       : null;
 
   return (
-    <main className="min-h-screen bg-[#F7F7F4] px-4 py-8">
-      <div className="w-full max-w-lg mx-auto">
+    <main className="min-h-screen bg-[#F7F7F4] px-6 py-8">
+      <div className="w-full max-w-4xl mx-auto">
         <div className="mb-6">
           <Link href="/pacientes" className="text-sm text-[#0F766E] hover:underline">
             ← Pacientes

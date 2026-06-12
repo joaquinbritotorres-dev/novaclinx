@@ -78,9 +78,9 @@ export async function POST(request: NextRequest) {
       ? b.nombre_paciente.trim() || null
       : null;
 
-  if (!inicio) {
+  if (!inicio || isNaN(new Date(inicio).getTime())) {
     return NextResponse.json(
-      { error: "El campo inicio es obligatorio." },
+      { error: "El campo inicio es obligatorio y debe ser una fecha válida." },
       { status: 400 }
     );
   }
@@ -100,6 +100,23 @@ export async function POST(request: NextRequest) {
 
   if (!medico) {
     return NextResponse.json({ error: "Médico no encontrado." }, { status: 403 });
+  }
+
+  // El paciente vinculado debe pertenecer al médico
+  if (paciente_id) {
+    const { data: paciente } = await supabase
+      .from("pacientes")
+      .select("id")
+      .eq("id", paciente_id)
+      .eq("medico_id", medico.id)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (!paciente) {
+      return NextResponse.json(
+        { error: "Paciente no encontrado." },
+        { status: 404 }
+      );
+    }
   }
 
   const { data: cita, error } = await supabase

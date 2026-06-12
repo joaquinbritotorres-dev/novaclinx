@@ -69,7 +69,7 @@ export default function NuevoPacienteForm() {
           tipo_seguro: tipoSeguro,
           alergias,
           condicion_cronica: condicionCronica,
-          proximo_control: proximoControl || null,
+          proximo_control: condicionCronica.trim() ? proximoControl || null : null,
           direccion,
           telefono,
           consentimiento_datos: consentimientoDatos,

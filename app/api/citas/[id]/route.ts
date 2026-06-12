@@ -46,7 +46,10 @@ export async function PATCH(
   const updates: Record<string, unknown> = {};
 
   if (b.inicio !== undefined) {
-    if (typeof b.inicio !== "string") {
+    if (
+      typeof b.inicio !== "string" ||
+      isNaN(new Date(b.inicio.trim()).getTime())
+    ) {
       return NextResponse.json({ error: "inicio inválido." }, { status: 400 });
     }
     updates.inicio = b.inicio.trim();
@@ -92,6 +95,23 @@ export async function PATCH(
   const medicoId = await getMedicoId(supabase, user.id);
   if (!medicoId) {
     return NextResponse.json({ error: "Médico no encontrado." }, { status: 403 });
+  }
+
+  // Si se vincula un paciente, debe pertenecer al médico
+  if (typeof updates.paciente_id === "string") {
+    const { data: paciente } = await supabase
+      .from("pacientes")
+      .select("id")
+      .eq("id", updates.paciente_id)
+      .eq("medico_id", medicoId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (!paciente) {
+      return NextResponse.json(
+        { error: "Paciente no encontrado." },
+        { status: 404 }
+      );
+    }
   }
 
   const { data: cita, error } = await supabase

@@ -103,8 +103,8 @@ export default async function ReclamacionesPage() {
   });
 
   return (
-    <main className="min-h-screen bg-[#F7F7F4] px-4 py-8">
-      <div className="w-full max-w-4xl mx-auto">
+    <main className="min-h-screen bg-[#F7F7F4] px-6 py-8">
+      <div className="w-full max-w-5xl mx-auto">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-[#0F172A]">Reclamaciones a Aseguradoras</h1>

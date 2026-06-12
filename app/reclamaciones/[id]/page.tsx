@@ -48,8 +48,8 @@ export default async function ReclamacionDetailPage({
   if (!reclamacion) notFound();
 
   return (
-    <main className="min-h-screen bg-[#F7F7F4] px-4 py-8">
-      <div className="w-full max-w-2xl mx-auto">
+    <main className="min-h-screen bg-[#F7F7F4] px-6 py-8">
+      <div className="w-full max-w-4xl mx-auto">
         <div className="mb-5">
           <Link href="/reclamaciones" className="text-sm text-[#0F766E] hover:underline">
             ← Reclamaciones
