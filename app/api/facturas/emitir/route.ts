@@ -4,7 +4,11 @@ import { type NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-guard";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { emitirFacturaDatil } from "@/lib/datil/emitir-factura";
-import { DATIL_AMBIENTE, DATIL_EMISOR } from "@/lib/datil/config";
+import {
+  validarConfigDatil,
+  getDatilAmbiente,
+  getDatilEmisor,
+} from "@/lib/datil/config";
 import type {
   DatilFacturaRequest,
   DatilItem,
@@ -38,6 +42,19 @@ export async function POST(request: NextRequest) {
   const montoNum = typeof monto === "number" ? monto : parseFloat(String(monto));
   if (isNaN(montoNum) || montoNum <= 0 || montoNum > 9999) {
     return NextResponse.json({ error: "Monto inválido. Debe ser entre $0.01 y $9,999." }, { status: 400 });
+  }
+
+  // Fail-fast: sin configuración completa de Dátil no se emite nada.
+  // El detalle exacto va a logs; al usuario solo mensaje genérico.
+  const configFaltante = validarConfigDatil();
+  if (configFaltante.length > 0) {
+    console.error(
+      `[facturas/emitir] Configuración Dátil incompleta. Variables faltantes o inválidas: ${configFaltante.join(", ")}`
+    );
+    return NextResponse.json(
+      { error: "La facturación no está disponible en este momento. Contacta a soporte." },
+      { status: 500 }
+    );
   }
 
   try {
@@ -184,12 +201,12 @@ export async function POST(request: NextRequest) {
     };
 
     const payload: DatilFacturaRequest = {
-      ambiente: DATIL_AMBIENTE,
+      ambiente: getDatilAmbiente(),
       tipo_emision: 1,
       secuencial,
       fecha_emision: new Date().toLocaleDateString("en-CA", { timeZone: "America/Guayaquil" }),
       moneda: "USD",
-      emisor: DATIL_EMISOR,
+      emisor: getDatilEmisor(),
       comprador: {
         identificacion: paciente.identificacion,
         tipo_identificacion: paciente.tipo_identificacion,
