@@ -120,42 +120,75 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Idempotencia: solo bloquear si ya hay una factura activa
-    const { data: facturaActiva } = await supabase
+    // Idempotencia: una consulta solo puede tener UNA factura (UNIQUE en DB).
+    // Si existe en estado activo → 409. Si existe en error → se reusa la fila
+    // y su secuencial en el reintento (sin chocar el UNIQUE, sin huecos).
+    const { data: facturaExistente } = await supabase
       .from("facturas")
-      .select("id, estado")
+      .select("id, estado, secuencial")
       .eq("consulta_id", consulta_id)
-      .in("estado", ["emitida", "autorizada", "pendiente"])
       .maybeSingle();
 
-    if (facturaActiva) {
+    if (facturaExistente && facturaExistente.estado !== "error") {
       return NextResponse.json(
         { error: "Esta consulta ya fue facturada o está en proceso." },
         { status: 409 }
       );
     }
 
-    // Secuencial: siguiente número para este médico
-    const { count: facturaCount } = await supabase
-      .from("facturas")
-      .select("id", { count: "exact", head: true })
-      .eq("medico_id", medico.id);
+    // Secuencial: del reintento si la fila en error ya tenía uno; si no,
+    // contador atómico por médico (RPC con row-lock, a prueba de carreras).
+    let secuencial: number;
+    if (facturaExistente?.secuencial != null) {
+      secuencial = Number(facturaExistente.secuencial);
+    } else {
+      const { data: sec, error: rpcError } = await supabase.rpc(
+        "siguiente_secuencial_factura",
+        { p_medico_id: medico.id }
+      );
+      if (rpcError || sec == null) {
+        console.error(
+          `[facturas/emitir] siguiente_secuencial_factura falló para medico ${medico.id}: ${rpcError?.message ?? "devolvió null"}`
+        );
+        return NextResponse.json(
+          { error: "No pudimos completar la acción. Intenta de nuevo." },
+          { status: 500 }
+        );
+      }
+      secuencial = Number(sec);
+    }
 
-    const secuencial = (facturaCount ?? 0) + 1;
+    // Registro PENDIENTE para tracking (antes de llamar a Dátil):
+    // reusa la fila en error si existe, si no inserta una nueva.
+    let factura: { id: string } | null = null;
+    if (facturaExistente) {
+      const { error: reuseError } = await supabase
+        .from("facturas")
+        .update({
+          estado: "pendiente",
+          monto: montoNum,
+          secuencial,
+          error_mensaje: null,
+        })
+        .eq("id", facturaExistente.id)
+        .eq("medico_id", medico.id);
+      if (!reuseError) factura = { id: facturaExistente.id };
+    } else {
+      const { data: nueva, error: insertError } = await supabase
+        .from("facturas")
+        .insert({
+          consulta_id,
+          medico_id: medico.id,
+          estado: "pendiente",
+          monto: montoNum,
+          secuencial,
+        })
+        .select("id")
+        .single();
+      if (!insertError) factura = nueva;
+    }
 
-    // Registro PENDIENTE para tracking (antes de llamar a Dátil)
-    const { data: factura, error: insertError } = await supabase
-      .from("facturas")
-      .insert({
-        consulta_id,
-        medico_id: medico.id,
-        estado: "pendiente",
-        monto: montoNum,
-      })
-      .select("id")
-      .single();
-
-    if (insertError || !factura) {
+    if (!factura) {
       return NextResponse.json({ error: "No pudimos completar la acción. Intenta de nuevo." }, { status: 500 });
     }
 
