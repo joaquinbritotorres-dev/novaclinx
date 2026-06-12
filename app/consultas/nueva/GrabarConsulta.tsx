@@ -16,7 +16,10 @@ type Fase =
   | "subiendo"
   | "subida"
   | "error_subida"
-  | "mic_denegado";
+  | "mic_denegado"
+  | "transcribiendo"
+  | "transcrita"
+  | "error_transcripcion";
 
 interface Props {
   pacienteId: string;
@@ -177,10 +180,37 @@ export default function GrabarConsulta({ pacienteId, onVolverEscribir }: Props) 
       if (!res.ok) throw new Error("El audio subió pero no pudimos confirmarlo.");
 
       setFase("subida");
+      void transcribir();
     } catch {
       // El blob sigue en memoria: reintento sin perder la grabación
       setError("Falló la subida del audio. Tu grabación está a salvo — reintenta.");
       setFase("error_subida");
+    }
+  }
+
+  async function transcribir() {
+    if (!grabacionId) return;
+    setFase("transcribiendo");
+    setError(null);
+    try {
+      const res = await fetch(`/api/grabaciones/${grabacionId}/transcribir`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(
+          typeof data.error === "string" ? data.error : "La transcripción falló."
+        );
+      }
+      setFase("transcrita");
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message
+          ? err.message
+          : "La transcripción falló. Reintenta."
+      );
+      setFase("error_transcripcion");
     }
   }
 
@@ -312,12 +342,43 @@ export default function GrabarConsulta({ pacienteId, onVolverEscribir }: Props) 
     );
   }
 
-  // fase === "subida" — la transcripción llega en la PARTE 3
+  if (fase === "subida" || fase === "transcribiendo") {
+    return (
+      <div className="bg-white rounded-xl border border-[#E5E7EB] p-6">
+        <div className="flex items-center gap-3">
+          <span className="w-3 h-3 rounded-full bg-[#0F766E] animate-pulse" aria-hidden />
+          <p className="text-sm text-[#475569]">
+            Audio subido ({formatTiempo(segundos)}). Transcribiendo… esto puede
+            tomar unos minutos.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (fase === "error_transcripcion") {
+    return (
+      <div className="bg-white rounded-xl border border-[#E5E7EB] p-6">
+        <p role="alert" className="text-sm text-[#DC2626] bg-[#FEE2E2] rounded-lg px-3 py-2 mb-3">
+          {error}
+        </p>
+        <button
+          type="button"
+          onClick={() => void transcribir()}
+          className="h-11 px-5 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors"
+        >
+          Reintentar transcripción
+        </button>
+      </div>
+    );
+  }
+
+  // fase === "transcrita" — la generación de la nota llega en la PARTE 4
   return (
     <div className="bg-white rounded-xl border border-[#E5E7EB] p-6">
       <p className="text-sm font-medium text-[#065F46] bg-[#D1FAE5] rounded-lg px-4 py-3">
-        Audio subido correctamente ({formatTiempo(segundos)}). La transcripción
-        estará disponible en el siguiente paso.
+        Transcripción lista. La generación de la nota estará disponible en el
+        siguiente paso.
       </p>
     </div>
   );
