@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import ResultadoConsulta from "./ResultadoConsulta";
+import GrabarConsulta from "./GrabarConsulta";
 import type { MedicamentoPropuesto } from "@/lib/recetas/tipos";
 
 interface SoapOutput {
@@ -33,6 +34,7 @@ const LOADING_MESSAGES = [
 const MIN_CHARS = 50;
 
 export default function NuevaConsultaForm({ pacienteId }: Props) {
+  const [modo, setModo] = useState<"escribir" | "grabar">("escribir");
   const [descripcion, setDescripcion] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
@@ -96,8 +98,48 @@ export default function NuevaConsultaForm({ pacienteId }: Props) {
 
   return (
     <div>
-      {/* Input area — hidden while showing result */}
+      {/* Toggle Escribir | Grabar — oculto al mostrar resultado */}
       {!resultado && (
+        <div className="inline-flex items-center gap-1 mb-4 p-1 bg-[#F1F5F9] rounded-lg" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={modo === "escribir"}
+            onClick={() => setModo("escribir")}
+            className={`h-9 px-4 rounded-md text-sm font-medium transition-colors ${
+              modo === "escribir"
+                ? "bg-white text-[#0F766E] shadow-sm"
+                : "text-[#64748B] hover:text-[#0F172A]"
+            }`}
+          >
+            Escribir
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={modo === "grabar"}
+            onClick={() => setModo("grabar")}
+            className={`h-9 px-4 rounded-md text-sm font-medium transition-colors ${
+              modo === "grabar"
+                ? "bg-white text-[#0F766E] shadow-sm"
+                : "text-[#64748B] hover:text-[#0F172A]"
+            }`}
+          >
+            Grabar consulta
+          </button>
+        </div>
+      )}
+
+      {/* Modo Grabar */}
+      {!resultado && modo === "grabar" && (
+        <GrabarConsulta
+          pacienteId={pacienteId}
+          onVolverEscribir={() => setModo("escribir")}
+        />
+      )}
+
+      {/* Input area — hidden while showing result */}
+      {!resultado && modo === "escribir" && (
         <div className="space-y-4">
           <div>
             <textarea
