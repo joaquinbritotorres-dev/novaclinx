@@ -102,6 +102,17 @@ export default function NuevaConsultaForm({ pacienteId }: Props) {
     setResultado(nota.soapOutput as SoapOutput);
   }
 
+  async function handleAprobadaGrabacion(consultaId: string) {
+    if (!grabacion) return;
+    // Vincular consulta + borrar audio/transcripción (la nota ya está guardada)
+    await fetch(`/api/grabaciones/${grabacion.grabacionId}/aprobar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ consulta_id: consultaId }),
+    });
+  }
+
   async function handleDiscardGrabacion() {
     if (grabacion) {
       await fetch(`/api/grabaciones/${grabacion.grabacionId}/descartar`, {
@@ -210,6 +221,7 @@ export default function NuevaConsultaForm({ pacienteId }: Props) {
           inputMedico={grabacion ? grabacion.descripcion : descripcion}
           onDiscard={grabacion ? handleDiscardGrabacion : handleDiscard}
           origenGrabacion={!!grabacion}
+          onAprobada={grabacion ? handleAprobadaGrabacion : undefined}
         />
       )}
     </div>
