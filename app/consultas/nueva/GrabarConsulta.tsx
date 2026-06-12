@@ -19,11 +19,22 @@ type Fase =
   | "mic_denegado"
   | "transcribiendo"
   | "transcrita"
-  | "error_transcripcion";
+  | "error_transcripcion"
+  | "generando_nota"
+  | "error_nota";
+
+export interface NotaGenerada {
+  // Shape de la respuesta de generar-nota (mismo SoapOutput del modo escrito)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  soapOutput: any;
+  descripcion: string;
+  grabacionId: string;
+}
 
 interface Props {
   pacienteId: string;
   onVolverEscribir: () => void;
+  onNotaGenerada: (nota: NotaGenerada) => void;
 }
 
 function formatTiempo(seg: number): string {
@@ -35,7 +46,11 @@ function formatTiempo(seg: number): string {
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
-export default function GrabarConsulta({ pacienteId, onVolverEscribir }: Props) {
+export default function GrabarConsulta({
+  pacienteId,
+  onVolverEscribir,
+  onNotaGenerada,
+}: Props) {
   const [fase, setFase] = useState<Fase>("consentimiento");
   const [segundos, setSegundos] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +62,7 @@ export default function GrabarConsulta({ pacienteId, onVolverEscribir }: Props) 
   const blobRef = useRef<Blob | null>(null);
   const uploadRef = useRef<{ path: string; token: string } | null>(null);
   const segundosRef = useRef(0);
+  const descartadoRef = useRef(false);
 
   // Cronómetro (solo avanza grabando)
   useEffect(() => {
@@ -113,8 +129,9 @@ export default function GrabarConsulta({ pacienteId, onVolverEscribir }: Props) 
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
       recorder.onstop = () => {
-        blobRef.current = new Blob(chunksRef.current, { type: "audio/webm" });
         streamRef.current?.getTracks().forEach((t) => t.stop());
+        if (descartadoRef.current) return;
+        blobRef.current = new Blob(chunksRef.current, { type: "audio/webm" });
         void subir();
       };
       recorderRef.current = recorder;
@@ -204,6 +221,7 @@ export default function GrabarConsulta({ pacienteId, onVolverEscribir }: Props) 
         );
       }
       setFase("transcrita");
+      void generarNota();
     } catch (err) {
       setError(
         err instanceof Error && err.message
@@ -212,6 +230,51 @@ export default function GrabarConsulta({ pacienteId, onVolverEscribir }: Props) 
       );
       setFase("error_transcripcion");
     }
+  }
+
+  async function generarNota() {
+    if (!grabacionId) return;
+    setFase("generando_nota");
+    setError(null);
+    try {
+      const res = await fetch(`/api/grabaciones/${grabacionId}/generar-nota`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(
+          typeof data.error === "string" ? data.error : "No pudimos generar la nota."
+        );
+      }
+      const data = await res.json();
+      const { descripcion, ...soapOutput } = data;
+      onNotaGenerada({ soapOutput, descripcion, grabacionId });
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message
+          ? err.message
+          : "No pudimos generar la nota. Reintenta."
+      );
+      setFase("error_nota");
+    }
+  }
+
+  async function descartar() {
+    descartadoRef.current = true;
+    if (recorderRef.current && recorderRef.current.state !== "inactive") {
+      recorderRef.current.stop();
+    }
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    if (grabacionId) {
+      await fetch(`/api/grabaciones/${grabacionId}/descartar`, {
+        method: "POST",
+        credentials: "include",
+      }).catch(() => {
+        // la purga manual cubre huérfanos
+      });
+    }
+    onVolverEscribir();
   }
 
   // ── UI ──────────────────────────────────────────────────────
@@ -314,6 +377,14 @@ export default function GrabarConsulta({ pacienteId, onVolverEscribir }: Props) 
           >
             Detener y procesar
           </button>
+          <div className="flex-1" />
+          <button
+            type="button"
+            onClick={() => void descartar()}
+            className="h-11 px-3 text-[#64748B] text-sm font-medium rounded-lg hover:bg-[#F1F5F9] transition-colors"
+          >
+            Descartar grabación
+          </button>
         </div>
       </div>
     );
@@ -329,57 +400,83 @@ export default function GrabarConsulta({ pacienteId, onVolverEscribir }: Props) 
             <p role="alert" className="text-sm text-[#DC2626] bg-[#FEE2E2] rounded-lg px-3 py-2 mb-3">
               {error}
             </p>
-            <button
-              type="button"
-              onClick={() => void subir()}
-              className="h-11 px-5 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors"
-            >
-              Reintentar subida
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => void subir()}
+                className="h-11 px-5 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                Reintentar subida
+              </button>
+              <button
+                type="button"
+                onClick={() => void descartar()}
+                className="h-11 px-3 text-[#64748B] text-sm font-medium rounded-lg hover:bg-[#F1F5F9] transition-colors"
+              >
+                Descartar grabación
+              </button>
+            </div>
           </>
         )}
       </div>
     );
   }
 
-  if (fase === "subida" || fase === "transcribiendo") {
+  if (
+    fase === "subida" ||
+    fase === "transcribiendo" ||
+    fase === "transcrita" ||
+    fase === "generando_nota"
+  ) {
+    const mensaje =
+      fase === "generando_nota"
+        ? "Generando el borrador de la nota…"
+        : fase === "transcrita"
+          ? "Transcripción lista. Preparando la nota…"
+          : "Audio subido. Transcribiendo… esto puede tomar unos minutos.";
     return (
       <div className="bg-white rounded-xl border border-[#E5E7EB] p-6">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 mb-4">
           <span className="w-3 h-3 rounded-full bg-[#0F766E] animate-pulse" aria-hidden />
           <p className="text-sm text-[#475569]">
-            Audio subido ({formatTiempo(segundos)}). Transcribiendo… esto puede
-            tomar unos minutos.
+            {mensaje} ({formatTiempo(segundos)})
           </p>
         </div>
-      </div>
-    );
-  }
-
-  if (fase === "error_transcripcion") {
-    return (
-      <div className="bg-white rounded-xl border border-[#E5E7EB] p-6">
-        <p role="alert" className="text-sm text-[#DC2626] bg-[#FEE2E2] rounded-lg px-3 py-2 mb-3">
-          {error}
-        </p>
         <button
           type="button"
-          onClick={() => void transcribir()}
-          className="h-11 px-5 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors"
+          onClick={() => void descartar()}
+          className="h-9 px-3 text-[#64748B] text-sm font-medium rounded-lg hover:bg-[#F1F5F9] transition-colors"
         >
-          Reintentar transcripción
+          Descartar grabación
         </button>
       </div>
     );
   }
 
-  // fase === "transcrita" — la generación de la nota llega en la PARTE 4
+  // error_transcripcion | error_nota — reintentables sin perder nada
   return (
     <div className="bg-white rounded-xl border border-[#E5E7EB] p-6">
-      <p className="text-sm font-medium text-[#065F46] bg-[#D1FAE5] rounded-lg px-4 py-3">
-        Transcripción lista. La generación de la nota estará disponible en el
-        siguiente paso.
+      <p role="alert" className="text-sm text-[#DC2626] bg-[#FEE2E2] rounded-lg px-3 py-2 mb-3">
+        {error}
       </p>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() =>
+            fase === "error_nota" ? void generarNota() : void transcribir()
+          }
+          className="h-11 px-5 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors"
+        >
+          {fase === "error_nota" ? "Reintentar generación" : "Reintentar transcripción"}
+        </button>
+        <button
+          type="button"
+          onClick={() => void descartar()}
+          className="h-11 px-3 text-[#64748B] text-sm font-medium rounded-lg hover:bg-[#F1F5F9] transition-colors"
+        >
+          Descartar grabación
+        </button>
+      </div>
     </div>
   );
 }

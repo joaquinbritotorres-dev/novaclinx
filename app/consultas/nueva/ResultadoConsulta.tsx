@@ -29,6 +29,10 @@ interface Props {
   pacienteId: string;
   inputMedico: string;
   onDiscard: () => void;
+  /** true cuando la nota viene del scribe de voz: banner permanente de revisión */
+  origenGrabacion?: boolean;
+  /** hook post-guardado (scribe: vincular grabación y borrar audio) */
+  onAprobada?: (consultaId: string) => Promise<void> | void;
 }
 
 const SOAP_META: { key: keyof SoapSections; label: string; rows: number }[] = [
@@ -48,6 +52,8 @@ export default function ResultadoConsulta({
   pacienteId,
   inputMedico,
   onDiscard,
+  origenGrabacion = false,
+  onAprobada,
 }: Props) {
   const router = useRouter();
 
@@ -118,6 +124,15 @@ export default function ResultadoConsulta({
       });
 
       if (!res.ok) throw new Error();
+      const data = await res.json().catch(() => ({}));
+      if (onAprobada && typeof data.id === "string") {
+        // La nota ya está guardada: un fallo aquí no debe bloquear al médico
+        try {
+          await onAprobada(data.id);
+        } catch {
+          // la purga manual cubre el remanente
+        }
+      }
       router.push(`/pacientes/${pacienteId}`);
     } catch {
       setSaveError("No pudimos guardar la consulta. Intenta de nuevo.");
@@ -128,12 +143,22 @@ export default function ResultadoConsulta({
   return (
     <div className="mt-6 space-y-5">
       {/* IA badge */}
-      <div
-        className="rounded-lg px-4 py-3 text-sm font-medium text-[#4338CA]"
-        style={{ backgroundColor: "#EEF2FF", borderLeft: "3px solid #6366F1" }}
-      >
-        Borrador generado por IA — revisa y corrige antes de guardar
-      </div>
+      {origenGrabacion ? (
+        <div
+          role="status"
+          className="rounded-lg px-4 py-3 text-sm font-semibold text-[#9A3412]"
+          style={{ backgroundColor: "#FFF7ED", borderLeft: "3px solid #EA580C" }}
+        >
+          Generada por IA a partir de grabación — revisión obligatoria
+        </div>
+      ) : (
+        <div
+          className="rounded-lg px-4 py-3 text-sm font-medium text-[#4338CA]"
+          style={{ backgroundColor: "#EEF2FF", borderLeft: "3px solid #6366F1" }}
+        >
+          Borrador generado por IA — revisa y corrige antes de guardar
+        </div>
+      )}
 
       {/* CIE-10 */}
       {(cie10Codigo || cie10Descripcion) && (

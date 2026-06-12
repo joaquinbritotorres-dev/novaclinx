@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import ResultadoConsulta from "./ResultadoConsulta";
-import GrabarConsulta from "./GrabarConsulta";
+import GrabarConsulta, { type NotaGenerada } from "./GrabarConsulta";
 import type { MedicamentoPropuesto } from "@/lib/recetas/tipos";
 
 interface SoapOutput {
@@ -40,6 +40,7 @@ export default function NuevaConsultaForm({ pacienteId }: Props) {
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const [genError, setGenError] = useState<string | null>(null);
   const [resultado, setResultado] = useState<SoapOutput | null>(null);
+  const [grabacion, setGrabacion] = useState<NotaGenerada | null>(null);
 
   const charCount = descripcion.length;
   const canGenerate = charCount >= MIN_CHARS && !isGenerating;
@@ -96,6 +97,25 @@ export default function NuevaConsultaForm({ pacienteId }: Props) {
     setGenError(null);
   }
 
+  function handleNotaGenerada(nota: NotaGenerada) {
+    setGrabacion(nota);
+    setResultado(nota.soapOutput as SoapOutput);
+  }
+
+  async function handleDiscardGrabacion() {
+    if (grabacion) {
+      await fetch(`/api/grabaciones/${grabacion.grabacionId}/descartar`, {
+        method: "POST",
+        credentials: "include",
+      }).catch(() => {
+        // la purga manual cubre huérfanos
+      });
+    }
+    setGrabacion(null);
+    setResultado(null);
+    setModo("escribir");
+  }
+
   return (
     <div>
       {/* Toggle Escribir | Grabar — oculto al mostrar resultado */}
@@ -135,6 +155,7 @@ export default function NuevaConsultaForm({ pacienteId }: Props) {
         <GrabarConsulta
           pacienteId={pacienteId}
           onVolverEscribir={() => setModo("escribir")}
+          onNotaGenerada={handleNotaGenerada}
         />
       )}
 
@@ -186,8 +207,9 @@ export default function NuevaConsultaForm({ pacienteId }: Props) {
         <ResultadoConsulta
           soapOutput={resultado}
           pacienteId={pacienteId}
-          inputMedico={descripcion}
-          onDiscard={handleDiscard}
+          inputMedico={grabacion ? grabacion.descripcion : descripcion}
+          onDiscard={grabacion ? handleDiscardGrabacion : handleDiscard}
+          origenGrabacion={!!grabacion}
         />
       )}
     </div>
