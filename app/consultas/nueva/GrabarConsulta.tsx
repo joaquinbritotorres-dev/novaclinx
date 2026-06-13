@@ -54,7 +54,12 @@ export default function GrabarConsulta({
   const [fase, setFase] = useState<Fase>("consentimiento");
   const [segundos, setSegundos] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [grabacionId, setGrabacionId] = useState<string | null>(null);
+
+  // Ref y NO estado: estas funciones se invocan desde callbacks del
+  // MediaRecorder (onstop) capturados en renders viejos. Con estado, el
+  // closure de onstop veía grabacionId=null y subir() retornaba en silencio
+  // (botonera "muerta" sin errores). El ref siempre lee el valor actual.
+  const grabacionIdRef = useRef<string | null>(null);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -104,7 +109,7 @@ export default function GrabarConsulta({
         );
       }
       const data = await res.json();
-      setGrabacionId(data.grabacion_id);
+      grabacionIdRef.current = data.grabacion_id;
       uploadRef.current = { path: data.path, token: data.token };
 
       // 2) Pedir micrófono
@@ -133,6 +138,12 @@ export default function GrabarConsulta({
         if (descartadoRef.current) return;
         blobRef.current = new Blob(chunksRef.current, { type: "audio/webm" });
         void subir();
+      };
+      recorder.onerror = () => {
+        // Un MediaRecorder con error pasa a "inactive" sin ruido en consola:
+        // sin este handler la UI quedaría "grabando" con botones muertos.
+        setError("La grabación falló en el navegador. Vuelve a intentarlo.");
+        setFase("error_subida");
       };
       recorderRef.current = recorder;
       segundosRef.current = 0;
@@ -172,6 +183,7 @@ export default function GrabarConsulta({
   async function subir() {
     const blob = blobRef.current;
     const upload = uploadRef.current;
+    const grabacionId = grabacionIdRef.current;
     if (!blob || !upload || !grabacionId) return;
 
     setFase("subiendo");
@@ -206,6 +218,7 @@ export default function GrabarConsulta({
   }
 
   async function transcribir() {
+    const grabacionId = grabacionIdRef.current;
     if (!grabacionId) return;
     setFase("transcribiendo");
     setError(null);
@@ -233,6 +246,7 @@ export default function GrabarConsulta({
   }
 
   async function generarNota() {
+    const grabacionId = grabacionIdRef.current;
     if (!grabacionId) return;
     setFase("generando_nota");
     setError(null);
@@ -266,6 +280,7 @@ export default function GrabarConsulta({
       recorderRef.current.stop();
     }
     streamRef.current?.getTracks().forEach((t) => t.stop());
+    const grabacionId = grabacionIdRef.current;
     if (grabacionId) {
       await fetch(`/api/grabaciones/${grabacionId}/descartar`, {
         method: "POST",
