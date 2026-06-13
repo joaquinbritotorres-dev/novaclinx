@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { MedicamentoPropuesto, Medicamento } from "@/lib/recetas/tipos";
 import MedicamentoCard from "./MedicamentoCard";
+import { contarVerificar } from "@/lib/recetas/gateDocumentos";
 
 interface SoapSections {
   subjetivo: string;
@@ -74,6 +75,9 @@ export default function ResultadoConsulta({
 
   const [saving,    setSaving]    = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Aviso de [VERIFICAR] pendientes al aprobar la nota (registro honesto, pero
+  // se confirma con el médico antes de guardar en la historia clínica).
+  const [avisoVerificar, setAvisoVerificar] = useState<number | null>(null);
 
   const hasIndicaciones  = soapOutput.indicaciones !== null;
   const hasSeguimiento   = soapOutput.seguimiento_plazo !== null;
@@ -96,8 +100,19 @@ export default function ResultadoConsulta({
     });
   }
 
-  async function handleAprobar() {
+  async function handleAprobar(omitirAvisoVerificar = false) {
     if (!todosConfirmados) return;
+
+    // Aviso (no bloqueo) si quedan [VERIFICAR] en la nota al aprobar
+    if (!omitirAvisoVerificar) {
+      const pendientes = contarVerificar([subjetivo, objetivo, analisis, plan]);
+      if (pendientes > 0) {
+        setAvisoVerificar(pendientes);
+        return;
+      }
+    }
+    setAvisoVerificar(null);
+
     setSaving(true);
     setSaveError(null);
 
@@ -287,11 +302,42 @@ export default function ResultadoConsulta({
         </div>
       )}
 
+      {avisoVerificar !== null && (
+        <div
+          role="alert"
+          className="text-sm text-[#92400E] bg-[#FEF3C7] border border-[#FDE68A] rounded-lg px-3 py-3 space-y-2"
+        >
+          <p>
+            Queda{avisoVerificar === 1 ? "" : "n"} <strong>{avisoVerificar}</strong>{" "}
+            dato{avisoVerificar === 1 ? "" : "s"} marcado{avisoVerificar === 1 ? "" : "s"}{" "}
+            como <strong>[VERIFICAR]</strong> en la nota. ¿Aprobar igual?
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleAprobar(true)}
+              disabled={saving}
+              className="h-9 px-4 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+            >
+              {saving ? "Guardando…" : "Aprobar igual"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setAvisoVerificar(null)}
+              disabled={saving}
+              className="h-9 px-4 border border-[#E2E8F0] text-[#64748B] text-sm font-medium rounded-lg hover:bg-white transition-colors disabled:opacity-50"
+            >
+              Revisar
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="flex flex-col gap-3 pt-1">
         <button
           type="button"
-          onClick={handleAprobar}
+          onClick={() => handleAprobar()}
           disabled={saving || !analisis.trim() || !todosConfirmados}
           className="w-full h-11 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:ring-offset-2"
         >

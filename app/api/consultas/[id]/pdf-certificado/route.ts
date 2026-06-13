@@ -5,6 +5,7 @@ import { createElement } from "react";
 import { requireAuth } from "@/lib/auth-guard";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { CertificadoTemplate } from "@/lib/pdf/certificadoTemplate";
+import { detectarPlaceholders, documentoLimpio } from "@/lib/recetas/gateDocumentos";
 import { firmarPdf } from "@/lib/firma/firmar";
 
 export async function GET(
@@ -77,6 +78,27 @@ export async function GET(
     tipo_seguro: string | null;
     numero_historia: string | null;
   } | null;
+
+  // Gate de documento legal: ningún corchete/rango sin resolver en el texto
+  // visible del certificado (observaciones siempre; diagnóstico si se muestra).
+  const textosCertificado = [
+    observaciones,
+    ...(mostrarDiagnostico
+      ? [consulta.cie10_descripcion, consulta.cie10_codigo]
+      : []),
+  ];
+  const hallazgoCert = detectarPlaceholders(textosCertificado);
+  if (!documentoLimpio(hallazgoCert)) {
+    return NextResponse.json(
+      {
+        error:
+          "El certificado tiene texto sin resolver y no puede emitirse: " +
+          [...hallazgoCert.corchetes, ...hallazgoCert.rangos].join(", ") +
+          ". Revisa el diagnóstico y las observaciones.",
+      },
+      { status: 422 }
+    );
+  }
 
   const firmar = sp.get("firmar") === "1";
   const fechaFirmaHoy = new Date().toLocaleDateString("es-EC", {

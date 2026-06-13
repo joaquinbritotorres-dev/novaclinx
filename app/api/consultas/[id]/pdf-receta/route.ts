@@ -6,6 +6,7 @@ import { requireAuth } from "@/lib/auth-guard";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { RecetaTemplate } from "@/lib/pdf/recetaTemplate";
 import { parseIndicaciones } from "@/lib/recetas/parseIndicaciones";
+import { detectarPlaceholders, documentoLimpio } from "@/lib/recetas/gateDocumentos";
 import { firmarPdf } from "@/lib/firma/firmar";
 import type { Medicamento } from "@/lib/recetas/tipos";
 
@@ -74,6 +75,19 @@ export async function GET(
   let medicamentos: Medicamento[] | undefined = undefined;
 
   if (parsedIndicaciones.tipo === "legado") {
+    // Gate de documento legal: ningún corchete/rango sin resolver en la receta
+    const hallazgo = detectarPlaceholders(parsedIndicaciones.indicaciones);
+    if (!documentoLimpio(hallazgo)) {
+      return NextResponse.json(
+        {
+          error:
+            "La receta tiene texto sin resolver y no puede emitirse: " +
+            [...hallazgo.corchetes, ...hallazgo.rangos].join(", ") +
+            ". Edita la consulta y confirma las dosis antes de generar la receta.",
+        },
+        { status: 422 }
+      );
+    }
     indicaciones = parsedIndicaciones.indicaciones;
   } else {
     const todos = parsedIndicaciones.medicamentos;
@@ -81,6 +95,26 @@ export async function GET(
       return NextResponse.json(
         { error: "Hay medicamentos pendientes de confirmación médica." },
         { status: 400 }
+      );
+    }
+    // Gate de documento legal: lo que se imprime (dosisConfirmadaTexto y
+    // cantidad) no puede contener corchetes ni rangos sin resolver.
+    const textosImpresos = todos.flatMap((m) => [
+      m.dosisConfirmadaTexto ?? m.dosis,
+      m.cantidadTexto,
+      m.concentracion,
+      m.via,
+    ]);
+    const hallazgo = detectarPlaceholders(textosImpresos);
+    if (!documentoLimpio(hallazgo)) {
+      return NextResponse.json(
+        {
+          error:
+            "La receta tiene dosis sin resolver y no puede emitirse: " +
+            [...hallazgo.corchetes, ...hallazgo.rangos].join(", ") +
+            ". Vuelve a confirmar las dosis antes de generar la receta.",
+        },
+        { status: 422 }
       );
     }
     medicamentos = todos as Medicamento[];

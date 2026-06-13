@@ -9,6 +9,7 @@ import {
   parsearDosis,
   buildCantidadTexto,
 } from "@/lib/recetas/parsearDosis";
+import { formatearDosisConfirmada } from "@/lib/recetas/gateDocumentos";
 
 const INPUT =
   "w-full h-9 px-2 bg-white border border-[#D1D5DB] rounded-lg text-sm " +
@@ -102,9 +103,19 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
     const r = resultado.resultado;
     const tam = parseFloat(tamano);
     const cantidad = buildCantidadTexto(r.numEnvases, tam, esLiquido);
+    // Dosis confirmada en números y letras a partir de los valores CALCULADOS
+    // (no del texto crudo de la IA): esto es lo único que se imprime.
+    const dosisConfirmadaTexto = formatearDosisConfirmada({
+      dosisPorTomaMg: r.dosisPorTomaMg,
+      volumenOUnidadesPorToma: r.volumenOUnidadesPorToma,
+      esLiquido,
+      concentracion: med.concentracion,
+      formaFarmaceutica: med.formaFarmaceutica,
+      frecuencia: med.frecuencia,
+    });
     setCantidadTexto(cantidad);
     setConfirmadoLocal(true);
-    onConfirmar({ ...med, confirmado: true, cantidadTexto: cantidad });
+    onConfirmar({ ...med, confirmado: true, cantidadTexto: cantidad, dosisConfirmadaTexto });
   }
 
   const isCustomTamano = !sizesDefault.includes(parseFloat(tamano));

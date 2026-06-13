@@ -96,7 +96,7 @@ export function RecetaTemplate(props: NotaTemplateProps) {
                     <Text style={[S.tblCell, S.colMed]}>{nombreMed}</Text>
                     <Text style={[S.tblCell, S.colCant, S.colSepLeft]}>{m.cantidadTexto}</Text>
                     <Text style={[S.tblCell, S.colVia, S.colSepLeft]}>{m.via}</Text>
-                    <Text style={[S.tblCell, S.colDosis, S.colSepLeft]}>{m.dosis + " " + m.frecuencia}</Text>
+                    <Text style={[S.tblCell, S.colDosis, S.colSepLeft]}>{m.dosisConfirmadaTexto ?? (m.dosis + " " + m.frecuencia)}</Text>
                     <Text style={[S.tblCell, S.colDur, S.colSepLeft]}>{m.duracionDias + " días"}</Text>
                   </View>
                 );
