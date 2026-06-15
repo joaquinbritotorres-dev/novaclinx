@@ -105,11 +105,10 @@ export function sanitizeForPdf(text: string): string {
     .replace(/×/g, "x")
     .replace(/·/g, ".")
     .replace(/['']/g, "'")
-    .replace(/[""]/g, '"')
-    .replace(/Derivaci[oó]n[aá]ci[oó]n/gi, "Derivación")
-    .replace(/Derivaci[oó]n[a-záéíóú]{2,6}/gi, "Derivación")
-    .replace(/Derivaci[oó]n[oó]/gi, "Derivación")
-    .replace(/Derivaci[oó]ní[oó]n/gi, "Derivación");
+    .replace(/[""]/g, '"');
+  // El typo "Derivaciónación" se corrige en la raíz (generarNotaSOAP →
+  // corregirTypoDerivacion); ya no se parchea aquí. Se eliminó el replacer
+  // /Derivaci[oó]n[a-záéíóú]{2,6}/ que corrompía el plural "derivaciones".
 }
 
 export function removeProximoControlFromPlan(plan: string): string {

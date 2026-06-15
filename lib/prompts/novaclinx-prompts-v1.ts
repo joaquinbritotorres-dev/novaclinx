@@ -1,7 +1,7 @@
 import "server-only";
 
 import Anthropic from "@anthropic-ai/sdk";
-import { normalizarNoRegistrado } from "@/lib/recetas/gateDocumentos";
+import { normalizarNoRegistrado, corregirTypoDerivacion } from "@/lib/recetas/gateDocumentos";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROMPT 1 — SOAP Pediatría
@@ -997,7 +997,9 @@ export async function generarNotaSOAP(input: NovaclinxInput): Promise<any> {
   if (parsed.soap && typeof parsed.soap === "object") {
     for (const k of ["subjetivo", "objetivo", "analisis", "plan"] as const) {
       if (typeof parsed.soap[k] === "string") {
-        parsed.soap[k] = normalizarNoRegistrado(parsed.soap[k]);
+        parsed.soap[k] = corregirTypoDerivacion(
+          normalizarNoRegistrado(parsed.soap[k])
+        );
       }
     }
   }

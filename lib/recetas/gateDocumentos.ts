@@ -43,6 +43,16 @@ export function normalizarNoRegistrado(texto: string): string {
   return texto.replace(/\[\s*NO REGISTRADO[^\]]*\]/gi, "[NO REGISTRADO]");
 }
 
+/**
+ * Corrige el artefacto de generación "Derivaciónación" (el modelo a veces
+ * duplica el sufijo en la sección "Derivación:"). El patrón solo toca la
+ * duplicación exacta "Derivación"+"ación" — NO corrompe el plural legítimo
+ * "derivaciones" (que no calza con [aá]ci[oó]n tras "Derivacion").
+ */
+export function corregirTypoDerivacion(texto: string): string {
+  return texto.replace(/Derivaci[oó]n[aá]ci[oó]n/gi, "Derivación");
+}
+
 /** Cuenta los marcadores [VERIFICAR …] en los textos (para el aviso al aprobar nota). */
 export function contarVerificar(textos: (string | null | undefined)[]): number {
   let n = 0;

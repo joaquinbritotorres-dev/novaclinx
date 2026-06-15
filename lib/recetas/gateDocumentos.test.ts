@@ -7,7 +7,24 @@ import {
   frecuenciaEnPalabras,
   formatearDosisConfirmada,
   normalizarNoRegistrado,
+  corregirTypoDerivacion,
 } from "./gateDocumentos";
+
+describe("corregirTypoDerivacion", () => {
+  it("corrige el artefacto 'Derivaciónación' → 'Derivación'", () => {
+    expect(corregirTypoDerivacion("Derivaciónación: cardiología"))
+      .toBe("Derivación: cardiología");
+    expect(corregirTypoDerivacion("derivacionacion al especialista"))
+      .toBe("Derivación al especialista");
+  });
+  it("NO corrompe el plural legítimo 'derivaciones'", () => {
+    expect(corregirTypoDerivacion("Se sugieren derivaciones a dos servicios."))
+      .toBe("Se sugieren derivaciones a dos servicios.");
+  });
+  it("deja intacto 'Derivación:' correcto", () => {
+    expect(corregirTypoDerivacion("Derivación: —")).toBe("Derivación: —");
+  });
+});
 
 describe("normalizarNoRegistrado", () => {
   it("colapsa variantes al token exacto", () => {
