@@ -3,20 +3,12 @@ import Link from "next/link";
 import {
   ArrowRight,
   CalendarDays,
-  LogOut,
   Plus,
   Stethoscope,
 } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import CountUp from "./CountUp";
 import Reveal from "./Reveal";
-
-async function signOut() {
-  "use server";
-  const supabase = await createSupabaseServerClient();
-  await supabase.auth.signOut();
-  redirect("/auth/login");
-}
 
 // ─── Helpers de fecha (zona Guayaquil) ───────────────────────────────────────
 
@@ -164,15 +156,6 @@ export default async function DashboardPage() {
                 </p>
               )}
             </div>
-            <form action={signOut}>
-              <button
-                type="submit"
-                className="inline-flex items-center gap-1.5 text-sm text-[#8A8780] hover:text-[#1A1A18] transition-colors"
-              >
-                <LogOut className="h-4 w-4" strokeWidth={1.75} />
-                <span className="hidden sm:inline">Cerrar sesión</span>
-              </button>
-            </form>
           </header>
         </Reveal>
 
