@@ -7,6 +7,7 @@ import {
   generarNotaSOAP,
   type NovaclinxInput,
 } from "@/lib/prompts/novaclinx-prompts-v1";
+import { extraerPesoKg } from "@/lib/recetas/extraerPeso";
 
 type Especialidad = NovaclinxInput["especialidad"];
 
@@ -94,11 +95,15 @@ export async function POST(request: NextRequest) {
 
     const { data: ultimaConsulta } = await supabase
       .from("consultas")
-      .select("id")
+      .select("id, nota_soap")
       .eq("paciente_id", paciente_id)
       .eq("aprobada_por_medico", true)
+      .order("fecha", { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    // Peso del historial (vive en el texto de la nota SOAP) → al generador
+    const pesoKg = extraerPesoKg(ultimaConsulta?.nota_soap ?? null);
 
     // Derive age in years + months
     let edad_anos = 0;
@@ -121,6 +126,7 @@ export async function POST(request: NextRequest) {
         edad_meses,
         sexo: paciente.sexo === "F" ? "femenino" : "masculino",
         cedula: typeof paciente.cedula === "string" ? paciente.cedula : null,
+        peso_kg: pesoKg,
       },
       descripcion_libre_del_medico: descripcion,
       resumen_longitudinal: undefined,

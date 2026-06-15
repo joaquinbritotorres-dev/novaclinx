@@ -6,7 +6,22 @@ import {
   numeroALetras,
   frecuenciaEnPalabras,
   formatearDosisConfirmada,
+  normalizarNoRegistrado,
 } from "./gateDocumentos";
+
+describe("normalizarNoRegistrado", () => {
+  it("colapsa variantes al token exacto", () => {
+    expect(normalizarNoRegistrado("Examen [NO REGISTRADO en esta consulta]."))
+      .toBe("Examen [NO REGISTRADO].");
+    expect(normalizarNoRegistrado("Antecedentes [NO REGISTRADO: alergias, cirugías]"))
+      .toBe("Antecedentes [NO REGISTRADO]");
+  });
+  it("deja intacto el token exacto y otros corchetes", () => {
+    expect(normalizarNoRegistrado("[NO REGISTRADO]")).toBe("[NO REGISTRADO]");
+    expect(normalizarNoRegistrado("dolor [VERIFICAR — intensidad]"))
+      .toBe("dolor [VERIFICAR — intensidad]");
+  });
+});
 
 describe("detectarPlaceholders / documentoLimpio (gate receta y certificado)", () => {
   it("detecta corchetes y bloquea", () => {

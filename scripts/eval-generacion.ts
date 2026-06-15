@@ -51,7 +51,8 @@ const CASOS: Caso[] = [
     input: {
       especialidad: "pediatria",
       tipo_consulta: "subsecuente",
-      paciente: { nombre_completo: "Emilia Cordero", edad_anos: 4, edad_meses: 2, sexo: "femenino", cedula: "0954321098" },
+      // peso_kg llega por el canal real (glue extrae 22 kg del historial)
+      paciente: { nombre_completo: "Emilia Cordero", edad_anos: 4, edad_meses: 2, sexo: "femenino", cedula: "0954321098", peso_kg: 22 },
       resumen_longitudinal:
         "Paciente preescolar con cuadros respiratorios altos a repetición. Última consulta hace 3 semanas (control sano): peso 22 kg, talla 104 cm, desarrollo acorde. Esquema de vacunación completo para la edad. Sin alergias conocidas registradas.",
       descripcion_libre_del_medico:

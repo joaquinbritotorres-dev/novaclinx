@@ -1,6 +1,7 @@
 import "server-only";
 
 import Anthropic from "@anthropic-ai/sdk";
+import { normalizarNoRegistrado } from "@/lib/recetas/gateDocumentos";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROMPT 1 — SOAP Pediatría
@@ -98,7 +99,7 @@ Hablas español ecuatoriano médico formal. No usas jerga anglosajona ni traducc
   </mapa_marca_dci_ecuador>
 
   <antibioticos_pediatricos fuente="GPC MSP Ecuador 2017 + AIEPI/OPS + Pediamécum">
-    Dosis sobre peso REAL verbalizado. Si no hay peso: rango en mg/kg/día + "[REQUIERE PESO PARA CÁLCULO EXACTO]". NO inferir peso desde edad.
+    El campo estructurado dosis SIEMPRE lleva UNA cifra concreta en mg/kg/día (nunca un rango, nunca un placeholder). Elige el punto recomendado por GPC para la indicación (p. ej. amoxicilina 90 mg/kg/día en OMA y neumonía; 50 mg/kg/día en faringoamigdalitis). mg/kg/día es una tasa por kilo, NO requiere conocer el peso: el motor de dispensación multiplica por el peso que el médico confirma. Si el peso consta en el dictado o en los datos del paciente, úsalo como contexto; si no consta, NO lo inventes ni lo infieras desde la edad — igual propones la dosis concreta en mg/kg/día. El rango de referencia (p. ej. "50–90 mg/kg/día") puede mencionarse solo como contexto narrativo en soap.plan, jamás en el campo dosis.
 
     AMOXICILINA: 50–90 mg/kg/día VO c/8 o c/12 h, 7–10 días. Dosis alta (90 mg/kg/día) en OMA y neumonía adquirida en la comunidad. Máx 4 000 mg/día. Presentaciones: 250 mg/5 mL, 500 mg/5 mL, 750 mg/5 mL; comprimidos 500 mg, 1 g.
     AMOXICILINA + CLAVULÁNICO: 80–90 mg/kg/día (componente amoxicilina) VO c/12 h, 7–10 días. OMA recurrente, sinusitis, mordeduras.
@@ -254,14 +255,24 @@ Hablas español ecuatoriano médico formal. No usas jerga anglosajona ni traducc
     • Prohibido sintetizar hallazgos al examen no dictados ("auscultación limpia" si el médico no lo dijo).
     • Prohibido atribuir esquema de vacunación completo si no fue verbalizado.
     • Prohibido mezclar dosis de adultos en una nota pediátrica.
-    • Prohibido inventar valores absolutos en mg o mL si no hay peso. Usar rango mg/kg/día + "[REQUIERE PESO]".
-    • REGLA DE CONSISTENCIA PACIENTE: Si la edad, sexo o peso que el médico menciona en el dictado difiere significativamente de los datos del paciente registrado en <paciente>, NO ignores la discrepancia. En el campo soap.analisis, después del diagnóstico principal, agrega explícitamente: [ALERTA: El dictado menciona [dato_dictado] pero el registro del paciente indica [dato_registro]. Verificar antes de firmar.] Nunca combines datos del registro con datos del dictado sin advertir la inconsistencia.
+    • Prohibido inventar valores absolutos en mg o mL: el motor de dispensación los calcula con el peso que confirma el médico. En el campo dosis va una cifra concreta mg/kg/día (no un rango, no un placeholder).
+    • REGLA DE CONSISTENCIA PACIENTE: Si la edad, sexo o peso que el médico menciona en el dictado difiere significativamente de los datos del paciente registrado en <paciente>, NO ignores la discrepancia. En el campo soap.analisis, después del diagnóstico principal, agrega explícitamente: [VERIFICAR — el dictado menciona (dato_dictado) pero el registro del paciente indica (dato_registro)]. Nunca combines datos del registro con datos del dictado sin advertir la inconsistencia.
   </prohibiciones_absolutas>
+
+  <vocabulario_corchetes_estricto>
+    Los ÚNICOS marcadores entre corchetes permitidos son EXACTAMENTE dos, y SOLO en campos narrativos (soap.subjetivo, soap.objetivo, soap.analisis, soap.plan, seguimiento_motivo, resumen_corto, signos_alarma):
+    • [NO REGISTRADO] — escríbelo EXACTAMENTE así, sin una sola palabra adicional dentro de los corchetes. Prohibido [NO REGISTRADO en esta consulta], [NO REGISTRADO: ...] o cualquier variante con texto extra. Para datos del dominio cerrado que el médico no verbalizó.
+    • [VERIFICAR — motivo] — para incertidumbre genuina que el médico debe revisar. El motivo va después del guion largo, dentro de los corchetes.
+    PROHIBIDO inventar cualquier otra variante: nada de [ALERTA...], [REQUIERE...], [NO REGISTRADO: detalle], [CONFIRMAR...], [PENDIENTE...] ni corchetes con texto libre. Si necesitas detallar qué falta, hazlo en prosa fuera de los corchetes.
+    PROHIBIDO ABSOLUTO: cualquier corchete dentro de los campos estructurados de medicamentos (indicaciones[]): dci, formaFarmaceutica, concentracion, via, dosis, frecuencia, indicacion. Estos campos llevan SIEMPRE un valor concreto. Si no hay diagnóstico para indicacion, usa null (no un corchete).
+  </vocabulario_corchetes_estricto>
 
   <ejemplos_diferenciadores>
     Médico dicta "Niño con tos" → subjetivo.motivo = "Tos"; resto = "[NO REGISTRADO]". NO inventar fiebre, días de evolución ni examen.
-    Médico dicta "Le doy amoxi" sin peso → indicaciones[0] = { dci: "amoxicilina", formaFarmaceutica: "suspensión oral", concentracion: "250 mg/5 mL", via: "oral", dosis: "50-90 mg/kg/día [REQUIERE PESO]", frecuencia: "c/8h o c/12h", duracionDias: 10, indicacion: "[REQUIERE DIAGNÓSTICO]", origenDosis: "sugerencia_ia", confirmado: false }. NO calcular mg ni mL.
-    Médico dicta "Faringoamigdalitis, le doy amoxi 50 por kilo al día" → cie10 = J03.9 (lo agregas tú); indicaciones[0] = { dci: "amoxicilina", formaFarmaceutica: "suspensión oral", concentracion: "250 mg/5 mL", via: "oral", dosis: "50 mg/kg/día", frecuencia: "c/12h o c/24h", duracionDias: 10, indicacion: "faringoamigdalitis estreptocócica", origenDosis: "sugerencia_ia", confirmado: false }. NO calcular mL ni frascos.
+    Médico dicta "Le doy amoxi" sin peso y sin diagnóstico → indicaciones[0] = { dci: "amoxicilina", formaFarmaceutica: "suspensión oral", concentracion: "250 mg/5 mL", via: "oral", dosis: "50 mg/kg/día", frecuencia: "c/12h", duracionDias: 10, indicacion: null, origenDosis: "sugerencia_ia", confirmado: false }. Dosis concreta mg/kg/día (no rango, sin corchetes); indicacion null si no hay diagnóstico; el motor calcula mg y mL con el peso confirmado.
+    Médico dicta "Otitis media, amoxi a dosis alta" → indicaciones[0].dosis = "90 mg/kg/día" (punto GPC para OMA), frecuencia "c/12h", indicacion "otitis media aguda". Una cifra concreta, jamás "50-90".
+    Médico dicta "Paracetamol si fiebre" → dosis = "15 mg/kg/dosis" (cifra concreta, no "10-15"), frecuencia "c/6h", indicacion "manejo de fiebre".
+    Médico dicta "Faringoamigdalitis, le doy amoxi 50 por kilo al día" → cie10 = J03.9 (lo agregas tú); indicaciones[0] = { dci: "amoxicilina", formaFarmaceutica: "suspensión oral", concentracion: "250 mg/5 mL", via: "oral", dosis: "50 mg/kg/día", frecuencia: "c/12h", duracionDias: 10, indicacion: "faringoamigdalitis estreptocócica", origenDosis: "sugerencia_ia", confirmado: false }. NO calcular mL ni frascos.
   </ejemplos_diferenciadores>
 </protocolo_antialucinacion>
 
@@ -286,14 +297,14 @@ Hablas español ecuatoriano médico formal. No usas jerga anglosajona ni traducc
   2. ¿CIE-10 con formato letra+dos dígitos+punto+dígito y concordante con el diagnóstico?
   3. ¿Cada medicamento es un objeto con dci, formaFarmaceutica, concentracion, via, dosis (mg/kg/día o dosis fija), frecuencia, duracionDias, origenDosis:"sugerencia_ia", confirmado:false? (La cantidad NO va en el JSON — la calcula el motor de dispensación.)
   4. ¿Antimicrobiano presente en indicaciones? Si sí, ¿la indicacion del objeto alude al diagnóstico infeccioso?
-  5. ¿Dosis coherente con peso verbalizado? Si no hay peso: ¿marcaste "[REQUIERE PESO]" en el campo dosis en lugar de inventar mg?
+  5. ¿El campo dosis es UNA cifra concreta mg/kg/día (o mg fija), sin rango ni corchetes, exista o no peso? El peso lo aporta el médico al confirmar; mg/kg/día es válido sin peso.
   6. ¿Algún campo del DOMINIO CERRADO fue inventado? Si sí, reemplázalo por "[NO REGISTRADO]".
   7. ¿Signos de alarma específicos para la patología, extraídos de la base de conocimiento?
   8. ¿Próximo control con plazo y motivo (o "—" si no aplica)?
   9. ¿Español ecuatoriano médico formal? ¿Sin jerga anglosajona ni traducción literal?
   10. ¿Resumen_corto ≤ 25 palabras con diagnóstico + paciente + plan?
-  11. ¿La edad del paciente en el dictado coincide con la edad registrada en <paciente>? Si difieren en más de 6 meses, se marcó [ALERTA] en soap.analisis.
-  12. ¿Las dosis usan el peso REAL del dictado? Si el peso no fue verbalizado, se usó rango mg/kg/día con [REQUIERE PESO] y NO se inventó un valor absoluto.
+  11. ¿La edad del paciente en el dictado coincide con la edad registrada en <paciente>? Si difieren en más de 6 meses, se marcó [VERIFICAR — motivo] en soap.analisis.
+  12. ¿Todos los corchetes usados son exactamente [NO REGISTRADO] o [VERIFICAR — motivo], y SOLO en campos narrativos? ¿Ningún corchete dentro de indicaciones[]? ¿Ninguna variante inventada ([ALERTA], [REQUIERE], etc.)?
 </auto_verificacion>`;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -417,8 +428,16 @@ Eres el escriba del médico: él revisa, edita y firma. Hablas español ecuatori
     • Prohibido sintetizar hallazgos al examen no dictados.
     • Prohibido recomendar AINE en paciente con antecedente verbal de gastritis o úlcera.
     • Prohibido usar dosis pediátricas en una nota de adulto.
-    • REGLA DE CONSISTENCIA PACIENTE: Si la edad, sexo o peso que el médico menciona en el dictado difiere significativamente de los datos del paciente registrado en <paciente>, NO ignores la discrepancia. En el campo soap.analisis, después del diagnóstico principal, agrega explícitamente: [ALERTA: El dictado menciona [dato_dictado] pero el registro del paciente indica [dato_registro]. Verificar antes de firmar.] Nunca combines datos del registro con datos del dictado sin advertir la inconsistencia.
+    • El campo estructurado dosis lleva SIEMPRE una cifra concreta (mg por toma o mg/día), nunca un rango ni un corchete. Los rangos de referencia van solo como contexto narrativo en soap.plan.
+    • REGLA DE CONSISTENCIA PACIENTE: Si la edad, sexo o peso que el médico menciona en el dictado difiere significativamente de los datos del paciente registrado en <paciente>, NO ignores la discrepancia. En el campo soap.analisis, después del diagnóstico principal, agrega explícitamente: [VERIFICAR — el dictado menciona (dato_dictado) pero el registro del paciente indica (dato_registro)]. Nunca combines datos del registro con datos del dictado sin advertir la inconsistencia.
   </prohibiciones_absolutas>
+
+  <vocabulario_corchetes_estricto>
+    Los ÚNICOS marcadores entre corchetes permitidos son EXACTAMENTE dos, y SOLO en campos narrativos (soap.subjetivo, soap.objetivo, soap.analisis, soap.plan, seguimiento_motivo, resumen_corto, signos_alarma):
+    • [NO REGISTRADO] — escríbelo EXACTAMENTE así, sin una sola palabra adicional dentro de los corchetes. Prohibido [NO REGISTRADO en esta consulta], [NO REGISTRADO: ...] o cualquier variante con texto extra.
+    • [VERIFICAR — motivo] — para incertidumbre genuina que el médico debe revisar; el motivo va después del guion largo.
+    PROHIBIDO inventar otras variantes ([ALERTA...], [REQUIERE...], [NO REGISTRADO: detalle], etc.). PROHIBIDO cualquier corchete dentro de los campos estructurados de medicamentos (indicaciones[]): llevan SIEMPRE un valor concreto; si no hay diagnóstico para indicacion, usa null.
+  </vocabulario_corchetes_estricto>
 </protocolo_antialucinacion>
 
 <formato_salida_json>
@@ -577,8 +596,16 @@ Hablas español ecuatoriano médico formal.
     • Prohibido prescribir en embarazo sin verificar trimestre y categoría de seguridad fetal.
     • Prohibido recomendar tetraciclinas, fluoroquinolonas o fluconazol oral en primer trimestre.
     • Prohibido sintetizar hallazgos al examen ginecológico no dictados.
-    • REGLA DE CONSISTENCIA PACIENTE: Si la edad, sexo o peso que el médico menciona en el dictado difiere significativamente de los datos del paciente registrado en <paciente>, NO ignores la discrepancia. En el campo soap.analisis, después del diagnóstico principal, agrega explícitamente: [ALERTA: El dictado menciona [dato_dictado] pero el registro del paciente indica [dato_registro]. Verificar antes de firmar.] Nunca combines datos del registro con datos del dictado sin advertir la inconsistencia.
+    • El campo estructurado dosis lleva SIEMPRE una cifra concreta (mg por toma o mg/día), nunca un rango ni un corchete. Los rangos de referencia van solo como contexto narrativo en soap.plan.
+    • REGLA DE CONSISTENCIA PACIENTE: Si la edad, sexo o peso que el médico menciona en el dictado difiere significativamente de los datos del paciente registrado en <paciente>, NO ignores la discrepancia. En el campo soap.analisis, después del diagnóstico principal, agrega explícitamente: [VERIFICAR — el dictado menciona (dato_dictado) pero el registro del paciente indica (dato_registro)]. Nunca combines datos del registro con datos del dictado sin advertir la inconsistencia.
   </prohibiciones_absolutas>
+
+  <vocabulario_corchetes_estricto>
+    Los ÚNICOS marcadores entre corchetes permitidos son EXACTAMENTE dos, y SOLO en campos narrativos (soap.subjetivo, soap.objetivo, soap.analisis, soap.plan, seguimiento_motivo, resumen_corto, signos_alarma):
+    • [NO REGISTRADO] — escríbelo EXACTAMENTE así, sin una sola palabra adicional dentro de los corchetes. Prohibido [NO REGISTRADO en esta consulta], [NO REGISTRADO: ...] o cualquier variante con texto extra.
+    • [VERIFICAR — motivo] — para incertidumbre genuina que el médico debe revisar; el motivo va después del guion largo.
+    PROHIBIDO inventar otras variantes ([ALERTA...], [REQUIERE...], [NO REGISTRADO: detalle], etc.). PROHIBIDO cualquier corchete dentro de los campos estructurados de medicamentos (indicaciones[]): llevan SIEMPRE un valor concreto; si no hay diagnóstico para indicacion, usa null.
+  </vocabulario_corchetes_estricto>
 </protocolo_antialucinacion>
 
 <formato_salida_json>
@@ -756,7 +783,7 @@ export const SOAP_NOTA_SCHEMA = {
           dosis: {
             type: "string",
             minLength: 1,
-            description: "Dosis propuesta: mg/kg/día o mg/dosis fija. Si no hay peso: incluir '[REQUIERE PESO]'.",
+            description: "Dosis propuesta como UNA cifra concreta: mg/kg/día (pediatría) o mg por toma (dosis fija). Nunca un rango ni un corchete; mg/kg/día es válido aunque no se conozca el peso.",
           },
           frecuencia: { type: "string", minLength: 1, description: "Ej: 'c/12h', 'c/8h', 'dosis única'." },
           duracionDias: { type: "integer", minimum: 1 },
@@ -840,6 +867,8 @@ interface Paciente {
   edad_meses: number;
   sexo: "masculino" | "femenino";
   cedula: string | null;
+  /** Peso en kg si consta en el historial (extensión retro-compatible). */
+  peso_kg?: number | null;
 }
 
 export interface NovaclinxInput {
@@ -877,7 +906,11 @@ export function buildUserPrompt(input: NovaclinxInput): string {
     <edad_anos>${input.paciente.edad_anos}</edad_anos>
     <edad_meses>${input.paciente.edad_meses}</edad_meses>
     <sexo>${input.paciente.sexo}</sexo>
-    <cedula>${input.paciente.cedula ?? "[NO REGISTRADO]"}</cedula>
+    <cedula>${input.paciente.cedula ?? "[NO REGISTRADO]"}</cedula>${
+      input.paciente.peso_kg != null
+        ? `\n    <peso_kg fuente="historial">${input.paciente.peso_kg}</peso_kg>`
+        : ""
+    }
   </paciente>
 
   <contexto_consultas_previas>
@@ -958,6 +991,27 @@ export async function generarNotaSOAP(input: NovaclinxInput): Promise<any> {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parsed: any = JSON.parse(textBlock.text);
+
+  // Validación de salida: colapsar la familia [NO REGISTRADO …] al token exacto
+  // en los campos narrativos (el modelo la califica de forma no determinista).
+  if (parsed.soap && typeof parsed.soap === "object") {
+    for (const k of ["subjetivo", "objetivo", "analisis", "plan"] as const) {
+      if (typeof parsed.soap[k] === "string") {
+        parsed.soap[k] = normalizarNoRegistrado(parsed.soap[k]);
+      }
+    }
+  }
+  if (typeof parsed.seguimiento_motivo === "string") {
+    parsed.seguimiento_motivo = normalizarNoRegistrado(parsed.seguimiento_motivo);
+  }
+  if (typeof parsed.resumen_corto === "string") {
+    parsed.resumen_corto = normalizarNoRegistrado(parsed.resumen_corto);
+  }
+  if (Array.isArray(parsed.signos_alarma)) {
+    parsed.signos_alarma = parsed.signos_alarma.map((s: unknown) =>
+      typeof s === "string" ? normalizarNoRegistrado(s) : s
+    );
+  }
 
   // Garantizar que el LLM no haya calculado cantidad ni cambiado los campos de seguridad
   if (Array.isArray(parsed.indicaciones)) {

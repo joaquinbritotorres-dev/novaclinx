@@ -33,6 +33,16 @@ export function documentoLimpio(hallazgo: HallazgoGate): boolean {
   return hallazgo.corchetes.length === 0 && hallazgo.rangos.length === 0;
 }
 
+/**
+ * Normaliza la familia [NO REGISTRADO …] / [NO REGISTRADO: …] al token exacto
+ * [NO REGISTRADO]. El qualifier ("en esta consulta", etc.) es redundante y el
+ * modelo lo añade de forma no determinista en notas subsecuentes; colapsarlo
+ * mantiene el vocabulario estricto sin perder significado.
+ */
+export function normalizarNoRegistrado(texto: string): string {
+  return texto.replace(/\[\s*NO REGISTRADO[^\]]*\]/gi, "[NO REGISTRADO]");
+}
+
 /** Cuenta los marcadores [VERIFICAR …] en los textos (para el aviso al aprobar nota). */
 export function contarVerificar(textos: (string | null | undefined)[]): number {
   let n = 0;

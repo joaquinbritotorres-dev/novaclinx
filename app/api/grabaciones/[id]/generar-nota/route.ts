@@ -4,6 +4,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-guard";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { adaptarTranscripcion, AdaptadorError } from "@/lib/scribe/adaptador";
+import { extraerPesoKg } from "@/lib/recetas/extraerPeso";
 import {
   generarNotaSOAP,
   type NovaclinxInput,
@@ -103,11 +104,14 @@ export async function POST(
 
     const { data: ultimaConsulta } = await supabase
       .from("consultas")
-      .select("id")
+      .select("id, nota_soap")
       .eq("paciente_id", paciente.id)
       .eq("aprobada_por_medico", true)
+      .order("fecha", { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    const pesoKg = extraerPesoKg(ultimaConsulta?.nota_soap ?? null);
 
     // 1) Adaptador: transcripción → descripcion (contrato del modo escrito)
     const descripcion = await adaptarTranscripcion(textoDiarizado);
@@ -133,6 +137,7 @@ export async function POST(
         edad_meses,
         sexo: paciente.sexo === "F" ? "femenino" : "masculino",
         cedula: typeof paciente.cedula === "string" ? paciente.cedula : null,
+        peso_kg: pesoKg,
       },
       descripcion_libre_del_medico: descripcion,
       resumen_longitudinal: undefined,
