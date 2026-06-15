@@ -18,27 +18,57 @@ export default function CertificadoModal({ consultaId, tieneDiagnostico, firmar 
   const [mostrarDiagnostico, setMostrarDiagnostico] = useState(false);
   const [observaciones, setObservaciones] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function handleGenerar() {
+  async function handleGenerar() {
     setLoading(true);
-    const params = new URLSearchParams();
-    if (reposo) {
-      params.set("reposo", "1");
-      params.set("reposo_dias", String(reposoDias));
-      params.set("reposo_inicio", reposoInicio);
-    }
-    if (mostrarDiagnostico) params.set("mostrar_diagnostico", "1");
-    if (observaciones.trim()) params.set("observaciones", observaciones.trim());
-    if (firmar) params.set("firmar", "1");
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (reposo) {
+        params.set("reposo", "1");
+        params.set("reposo_dias", String(reposoDias));
+        params.set("reposo_inicio", reposoInicio);
+      }
+      if (mostrarDiagnostico) params.set("mostrar_diagnostico", "1");
+      if (observaciones.trim()) params.set("observaciones", observaciones.trim());
+      if (firmar) params.set("firmar", "1");
 
-    const url = `/api/consultas/${consultaId}/pdf-certificado?${params.toString()}`;
-    const a = document.createElement("a");
-    a.href = url;
-    a.click();
-    setTimeout(() => {
-      setLoading(false);
+      const res = await fetch(
+        `/api/consultas/${consultaId}/pdf-certificado?${params.toString()}`,
+        { credentials: "include" }
+      );
+
+      if (!res.ok) {
+        // El endpoint puede devolver 422 (gate de corchetes/rangos), 400
+        // (firma) o 500 — mostramos el motivo en vez de fallar en silencio.
+        const data = await res.json().catch(() => ({}));
+        throw new Error(
+          typeof data.error === "string"
+            ? data.error
+            : "No pudimos generar el certificado."
+        );
+      }
+
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = `novaclinx-certificado${firmar ? "-firmado" : ""}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
       setOpen(false);
-    }, 800);
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message
+          ? err.message
+          : "No pudimos generar el certificado."
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -153,6 +183,12 @@ export default function CertificadoModal({ consultaId, tieneDiagnostico, firmar 
                 className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm text-[#0F172A] placeholder:text-[#94A3B8] resize-none focus:outline-none focus:ring-2 focus:ring-[#0F766E]/40"
               />
             </div>
+
+            {error && (
+              <p role="alert" className="text-sm text-[#DC2626] bg-[#FEE2E2] rounded-lg px-3 py-2">
+                {error}
+              </p>
+            )}
 
             {/* Actions */}
             <div className="flex gap-2 pt-1">

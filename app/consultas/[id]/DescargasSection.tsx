@@ -28,8 +28,49 @@ export default function DescargasSection({
   textoCopia,
 }: Props) {
   const [electronica, setElectronica] = useState(tieneFirma);
+  const [descargando, setDescargando] = useState<"nota" | "receta" | null>(null);
+  const [errorDescarga, setErrorDescarga] = useState<string | null>(null);
 
   const firmarParam = electronica && tieneFirma ? "?firmar=1" : "";
+  const firmadaSuffix = electronica && tieneFirma ? "-firmada" : "";
+
+  // Descarga vía fetch para poder mostrar el error (p. ej. receta 422 con
+  // dosis sin resolver, o fallo de firma) en vez de descargar un JSON roto.
+  async function descargar(tipo: "nota" | "receta") {
+    setDescargando(tipo);
+    setErrorDescarga(null);
+    try {
+      const res = await fetch(
+        `/api/consultas/${consultaId}/pdf-${tipo}${firmarParam}`,
+        { credentials: "include" }
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(
+          typeof data.error === "string"
+            ? data.error
+            : "No pudimos generar el documento."
+        );
+      }
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = `novaclinx-${tipo}${firmadaSuffix}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
+    } catch (err) {
+      setErrorDescarga(
+        err instanceof Error && err.message
+          ? err.message
+          : "No pudimos generar el documento."
+      );
+    } finally {
+      setDescargando(null);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -83,25 +124,27 @@ export default function DescargasSection({
       </div>
 
       {/* Nota Clínica */}
-      <a
-        href={`/api/consultas/${consultaId}/pdf-nota${firmarParam}`}
-        download
-        className="w-full h-11 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors inline-flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:ring-offset-2"
+      <button
+        type="button"
+        onClick={() => descargar("nota")}
+        disabled={descargando !== null}
+        className="w-full h-11 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:ring-offset-2"
       >
         <DownloadIcon />
-        Descargar Nota Clínica
-      </a>
+        {descargando === "nota" ? "Generando…" : "Descargar Nota Clínica"}
+      </button>
 
       {/* Receta */}
       {tieneIndicaciones ? (
-        <a
-          href={`/api/consultas/${consultaId}/pdf-receta${firmarParam}`}
-          download
-          className="w-full h-11 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors inline-flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:ring-offset-2"
+        <button
+          type="button"
+          onClick={() => descargar("receta")}
+          disabled={descargando !== null}
+          className="w-full h-11 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:ring-offset-2"
         >
           <DownloadIcon />
-          Descargar Receta
-        </a>
+          {descargando === "receta" ? "Generando…" : "Descargar Receta"}
+        </button>
       ) : (
         <button
           type="button"
@@ -111,6 +154,12 @@ export default function DescargasSection({
         >
           Descargar Receta
         </button>
+      )}
+
+      {errorDescarga && (
+        <p role="alert" className="text-sm text-[#DC2626] bg-[#FEE2E2] rounded-lg px-3 py-2">
+          {errorDescarga}
+        </p>
       )}
 
       {/* Certificado */}
