@@ -2,30 +2,23 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Download } from "lucide-react";
 import CertificadoModal from "./CertificadoModal";
-import CopiarNotaButton from "./CopiarNotaButton";
-import CompartirNotaButton from "./CompartirNotaButton";
 
 interface Props {
   consultaId: string;
   tieneFirma: boolean;
   tieneIndicaciones: boolean;
   tieneDiagnostico: boolean;
-  textoCopia: string;
+  /** Conservado en la interfaz (lo pasa la página); copiar/compartir se retiró de esta vista. */
+  textoCopia?: string;
 }
-
-const DownloadIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="shrink-0">
-    <path d="M12 3v13m0 0-4-4m4 4 4-4M4 20h16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
 
 export default function DescargasSection({
   consultaId,
   tieneFirma,
   tieneIndicaciones,
   tieneDiagnostico,
-  textoCopia,
 }: Props) {
   const [electronica, setElectronica] = useState(tieneFirma);
   const [descargando, setDescargando] = useState<"nota" | "receta" | null>(null);
@@ -73,20 +66,22 @@ export default function DescargasSection({
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      {/* Selector de firma */}
-      <div className="bg-white rounded-xl border border-[#E5E7EB] p-4">
-        <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-3">
-          Tipo de firma en documentos
-        </p>
-        <div className="flex gap-2">
+    <section className="rounded-xl border border-[#E7E3DB] bg-white p-5 space-y-4">
+      <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#8A8780]">
+        Documentos
+      </p>
+
+      {/* Tipo de firma — segmented control */}
+      <div>
+        <p className="text-sm text-[#5C5A54] mb-2">Firma en documentos</p>
+        <div className="flex w-full rounded-lg bg-[#F2EFE9] p-1">
           <button
             type="button"
             onClick={() => setElectronica(false)}
-            className={`flex-1 h-9 rounded-lg text-sm font-medium transition-colors ${
+            className={`flex-1 h-8 rounded-md text-sm font-medium transition-colors ${
               !electronica
-                ? "bg-[#0F766E] text-white"
-                : "bg-[#F1F5F9] text-[#64748B] hover:bg-[#E2E8F0]"
+                ? "bg-white text-[#0F766E] shadow-sm"
+                : "text-[#5C5A54] hover:text-[#1A1A18]"
             }`}
           >
             A mano
@@ -95,82 +90,81 @@ export default function DescargasSection({
             <button
               type="button"
               onClick={() => setElectronica(true)}
-              className={`flex-1 h-9 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex-1 h-8 rounded-md text-sm font-medium transition-colors ${
                 electronica
-                  ? "bg-[#0F766E] text-white"
-                  : "bg-[#F1F5F9] text-[#64748B] hover:bg-[#E2E8F0]"
+                  ? "bg-white text-[#0F766E] shadow-sm"
+                  : "text-[#5C5A54] hover:text-[#1A1A18]"
               }`}
             >
               Electrónica
             </button>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center">
-              <button
-                type="button"
-                disabled
-                className="w-full h-9 rounded-lg text-sm font-medium bg-[#F1F5F9] text-[#CBD5E1] cursor-not-allowed"
-              >
-                Electrónica
-              </button>
-              <p className="text-xs text-[#94A3B8] mt-1 text-center">
-                <Link href="/perfil" className="text-[#0F766E] hover:underline">
-                  Configura tu firma
-                </Link>{" "}
-                en tu perfil
-              </p>
-            </div>
+            <button
+              type="button"
+              disabled
+              className="flex-1 h-8 rounded-md text-sm font-medium text-[#C4C0B7] cursor-not-allowed"
+            >
+              Electrónica
+            </button>
           )}
         </div>
+        {!tieneFirma && (
+          <p className="text-xs text-[#A8A49C] mt-1.5">
+            <Link href="/perfil" className="text-[#0F766E] hover:underline">
+              Configura tu firma
+            </Link>{" "}
+            en tu perfil para firmar electrónicamente.
+          </p>
+        )}
       </div>
 
-      {/* Nota Clínica */}
-      <button
-        type="button"
-        onClick={() => descargar("nota")}
-        disabled={descargando !== null}
-        className="w-full h-11 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:ring-offset-2"
-      >
-        <DownloadIcon />
-        {descargando === "nota" ? "Generando…" : "Descargar Nota Clínica"}
-      </button>
-
-      {/* Receta */}
-      {tieneIndicaciones ? (
+      {/* Descargas — los 3 documentos con el MISMO tratamiento (teal sólido) */}
+      <div className="space-y-2.5">
         <button
           type="button"
-          onClick={() => descargar("receta")}
+          onClick={() => descargar("nota")}
           disabled={descargando !== null}
-          className="w-full h-11 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:ring-offset-2"
+          className="w-full h-11 rounded-lg bg-[#0F766E] text-white text-sm font-medium inline-flex items-center justify-center gap-2 transition hover:brightness-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#0F766E]/40 focus:ring-offset-2"
         >
-          <DownloadIcon />
-          {descargando === "receta" ? "Generando…" : "Descargar Receta"}
+          <Download className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+          {descargando === "nota" ? "Generando…" : "Descargar nota clínica"}
         </button>
-      ) : (
-        <button
-          type="button"
-          disabled
-          title="Esta consulta no tiene medicamentos prescritos"
-          className="w-full h-11 bg-[#E2E8F0] text-[#94A3B8] text-sm font-medium rounded-lg cursor-not-allowed inline-flex items-center justify-center gap-2"
-        >
-          Descargar Receta
-        </button>
-      )}
+
+        {tieneIndicaciones ? (
+          <button
+            type="button"
+            onClick={() => descargar("receta")}
+            disabled={descargando !== null}
+            className="w-full h-11 rounded-lg bg-[#0F766E] text-white text-sm font-medium inline-flex items-center justify-center gap-2 transition hover:brightness-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#0F766E]/40 focus:ring-offset-2"
+          >
+            <Download className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+            {descargando === "receta" ? "Generando…" : "Descargar receta"}
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled
+            title="Esta consulta no tiene medicamentos prescritos"
+            className="w-full h-11 rounded-lg bg-[#0F766E]/30 text-white/90 text-sm font-medium cursor-not-allowed inline-flex items-center justify-center gap-2"
+          >
+            <Download className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+            Descargar receta
+          </button>
+        )}
+
+        {/* Certificado: abre modal; su botón disparador usa el mismo teal sólido */}
+        <CertificadoModal
+          consultaId={consultaId}
+          tieneDiagnostico={tieneDiagnostico}
+          firmar={electronica && tieneFirma}
+        />
+      </div>
 
       {errorDescarga && (
-        <p role="alert" className="text-sm text-[#DC2626] bg-[#FEE2E2] rounded-lg px-3 py-2">
+        <p role="alert" className="text-sm text-[#B91C1C] bg-[#FBEAE9] rounded-lg px-3 py-2">
           {errorDescarga}
         </p>
       )}
-
-      {/* Certificado */}
-      <CertificadoModal
-        consultaId={consultaId}
-        tieneDiagnostico={tieneDiagnostico}
-        firmar={electronica && tieneFirma}
-      />
-
-      <CopiarNotaButton texto={textoCopia} />
-      <CompartirNotaButton consultaId={consultaId} texto={textoCopia} />
-    </div>
+    </section>
   );
 }

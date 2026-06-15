@@ -33,7 +33,7 @@ export default function CompartirNotaButton({ consultaId, texto }: Props) {
     <button
       onClick={handleCompartir}
       disabled={sharing}
-      className="w-full h-11 bg-white border border-[#E5E7EB] hover:bg-[#F8FAFC] text-[#374151] text-sm font-medium rounded-lg transition-colors inline-flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:ring-offset-2 disabled:opacity-50"
+      className="w-full h-11 bg-white border border-[#E7E3DB] hover:bg-[#F7F7F4] hover:text-[#1A1A18] text-[#5C5A54] text-sm font-medium rounded-lg transition-colors inline-flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#0F766E]/40 focus:ring-offset-2 disabled:opacity-50"
     >
       <svg
         width="16"

@@ -59,9 +59,9 @@ export default function FacturacionSection({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-[#E5E7EB] p-5 mb-4">
-      <p className="text-xs font-bold text-[#0F766E] uppercase tracking-wide mb-3">
-        Facturación (SRI)
+    <div className="bg-white rounded-xl border border-[#E7E3DB] p-5">
+      <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#8A8780] mb-4">
+        Facturación · SRI
       </p>
 
       {/* Caso 1: Ya hay una factura */}

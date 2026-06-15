@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Download } from "lucide-react";
 
 interface Props {
   consultaId: string;
@@ -76,12 +77,10 @@ export default function CertificadoModal({ consultaId, tieneDiagnostico, firmar 
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="w-full h-11 border border-[#0F766E] text-[#0F766E] hover:bg-[#F0FDFB] text-sm font-medium rounded-lg transition-colors inline-flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:ring-offset-2"
+        className="w-full h-11 rounded-lg bg-[#0F766E] text-white text-sm font-medium inline-flex items-center justify-center gap-2 transition hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-[#0F766E]/40 focus:ring-offset-2"
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="shrink-0">
-          <path d="M12 3v13m0 0-4-4m4 4 4-4M4 20h16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        Descargar Certificado
+        <Download className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+        Descargar certificado
       </button>
 
       {open && (

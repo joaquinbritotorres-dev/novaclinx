@@ -23,7 +23,7 @@ export default function CopiarNotaButton({ texto }: Props) {
     <button
       type="button"
       onClick={handleCopiar}
-      className="w-full h-11 bg-white border border-[#D1D5DB] text-[#374151] text-sm font-medium rounded-lg hover:bg-[#F9FAFB] transition-colors focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:ring-offset-2"
+      className="w-full h-11 bg-white border border-[#E7E3DB] text-[#5C5A54] text-sm font-medium rounded-lg hover:bg-[#F7F7F4] hover:text-[#1A1A18] transition-colors focus:outline-none focus:ring-2 focus:ring-[#0F766E]/40 focus:ring-offset-2"
     >
       {copied ? "¡Copiado!" : "Copiar nota"}
     </button>

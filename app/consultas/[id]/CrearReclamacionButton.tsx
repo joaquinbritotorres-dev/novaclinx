@@ -45,24 +45,27 @@ export default function CrearReclamacionButton({
   };
 
   return (
-    <div className="mt-4">
+    <section className="rounded-xl border border-[#E7E3DB] bg-white p-5">
+      <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#8A8780] mb-4">
+        Seguros
+      </p>
       {!isOpen ? (
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="w-full h-11 bg-white border border-[#0F766E] text-[#0F766E] hover:bg-[#F0FDFB] text-sm font-medium rounded-lg transition-colors inline-flex items-center justify-center gap-2"
+          className="w-full h-11 bg-white border border-[#0F766E]/30 text-[#0F766E] hover:bg-[#0F766E]/[0.06] text-sm font-medium rounded-lg transition-colors inline-flex items-center justify-center gap-2"
         >
           Crear reclamación a aseguradora
         </button>
       ) : (
-        <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded-lg space-y-3">
-          <label className="block text-sm font-medium text-[#0F172A]">
+        <div className="space-y-3">
+          <label className="block text-sm text-[#5C5A54]">
             Selecciona el seguro
           </label>
           <select
             value={selectedSeguroId}
             onChange={(e) => setSelectedSeguroId(e.target.value)}
-            className="w-full h-11 px-3 border border-[#CBD5E1] rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50"
+            className="w-full h-11 px-3 border border-[#E7E3DB] rounded-lg text-sm bg-white text-[#1A1A18] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/40"
           >
             <option value="">Selecciona un seguro...</option>
             {seguros.map((s) => (
@@ -96,6 +99,6 @@ export default function CrearReclamacionButton({
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }
