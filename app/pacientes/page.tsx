@@ -37,21 +37,24 @@ export default async function PacientesPage({
     query = query.ilike("nombre", `%${busqueda}%`);
   }
 
-  const { data: pacientes } = await query;
+  // Lista de pacientes y última consulta por paciente: independientes (solo
+  // dependen de medico.id) → en paralelo. Se trae solo fecha (resumen_corto
+  // no se muestra en la lista).
+  const [{ data: pacientes }, { data: ultimasConsultas }] = await Promise.all([
+    query,
+    supabase
+      .from("consultas")
+      .select("paciente_id, fecha")
+      .eq("medico_id", medico.id)
+      .eq("aprobada_por_medico", true)
+      .order("fecha", { ascending: false }),
+  ]);
 
-  // Fetch the most recent approved consultation per patient in one query
-  const { data: ultimasConsultas } = await supabase
-    .from("consultas")
-    .select("paciente_id, fecha, resumen_corto")
-    .eq("medico_id", medico.id)
-    .eq("aprobada_por_medico", true)
-    .order("fecha", { ascending: false });
-
-  // Build a map: paciente_id → latest consultation (already sorted DESC so first match wins)
-  const ultimaMap = new Map<string, { fecha: string; resumen_corto: string | null }>();
+  // Build a map: paciente_id → fecha de la última consulta (DESC → primera gana)
+  const ultimaMap = new Map<string, { fecha: string }>();
   for (const c of ultimasConsultas ?? []) {
     if (!ultimaMap.has(c.paciente_id)) {
-      ultimaMap.set(c.paciente_id, { fecha: c.fecha, resumen_corto: c.resumen_corto });
+      ultimaMap.set(c.paciente_id, { fecha: c.fecha });
     }
   }
 

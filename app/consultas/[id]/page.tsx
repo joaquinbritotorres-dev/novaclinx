@@ -122,17 +122,20 @@ export default async function ConsultaPage({
     telefono: string | null;
   } | null;
 
-  const { data: factura } = await supabase
-    .from("facturas")
-    .select("id, estado, datil_id, clave_acceso, error_mensaje")
-    .eq("consulta_id", consulta.id)
-    .maybeSingle();
-
-  const { data: segurosPaciente } = await supabase
-    .from("paciente_seguros")
-    .select("id, tipo_cobertura, aseguradoras(nombre)")
-    .eq("paciente_id", paciente?.id ?? "")
-    .is("deleted_at", null);
+  // factura y seguros son independientes entre sí (ambos disponibles tras
+  // cargar la consulta) → en paralelo en vez de en cascada.
+  const [{ data: factura }, { data: segurosPaciente }] = await Promise.all([
+    supabase
+      .from("facturas")
+      .select("id, estado, datil_id, clave_acceso, error_mensaje")
+      .eq("consulta_id", consulta.id)
+      .maybeSingle(),
+    supabase
+      .from("paciente_seguros")
+      .select("id, tipo_cobertura, aseguradoras(nombre)")
+      .eq("paciente_id", paciente?.id ?? "")
+      .is("deleted_at", null),
+  ]);
 
   const secciones = parseSoapSections(consulta.nota_soap ?? "");
   const indicacionesParsed = parseIndicaciones(consulta.indicaciones);

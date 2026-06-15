@@ -41,16 +41,37 @@ export default async function PacientePerfilPage({
 
   if (!medico) redirect("/onboarding/especialidad");
 
-  // Verify ownership before reading any patient data
-  const { data: paciente } = await supabase
-    .from("pacientes")
-    .select(
-      "id, nombre, edad, sexo, cedula, fecha_nacimiento, direccion, telefono, tipo_seguro, alergias, numero_historia, identificacion, tipo_identificacion, email, condicion_cronica, proximo_control, consentimiento_datos_at, consentimiento_datos_version"
-    )
-    .eq("id", id)
-    .eq("medico_id", medico.id)
-    .is("deleted_at", null)
-    .maybeSingle();
+  // Verify ownership before reading any patient data. Las tres consultas son
+  // independientes (dependen solo de id + medico.id) y la RLS protege cada
+  // tabla, así que van en paralelo en vez de en cascada (evita el waterfall).
+  const [
+    { data: paciente },
+    { data: consultas },
+    { data: reclamaciones },
+  ] = await Promise.all([
+    supabase
+      .from("pacientes")
+      .select(
+        "id, nombre, edad, sexo, cedula, fecha_nacimiento, direccion, telefono, tipo_seguro, alergias, numero_historia, identificacion, tipo_identificacion, email, condicion_cronica, proximo_control, consentimiento_datos_at, consentimiento_datos_version"
+      )
+      .eq("id", id)
+      .eq("medico_id", medico.id)
+      .is("deleted_at", null)
+      .maybeSingle(),
+    supabase
+      .from("consultas")
+      .select("id, fecha, resumen_corto")
+      .eq("paciente_id", id)
+      .eq("aprobada_por_medico", true)
+      .order("fecha", { ascending: false }),
+    supabase
+      .from("reclamaciones")
+      .select("id, estado, fecha_atencion, aseguradoras ( nombre )")
+      .eq("paciente_id", id)
+      .eq("medico_id", medico.id)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false }),
+  ]);
 
   if (!paciente) notFound();
 
@@ -64,21 +85,6 @@ export default async function PacientePerfilPage({
     consentimiento_datos_version: string | null;
   };
   const p = paciente as PacienteRow;
-
-  const { data: consultas } = await supabase
-    .from("consultas")
-    .select("id, fecha, resumen_corto")
-    .eq("paciente_id", id)
-    .eq("aprobada_por_medico", true)
-    .order("fecha", { ascending: false });
-
-  const { data: reclamaciones } = await supabase
-    .from("reclamaciones")
-    .select("id, estado, fecha_atencion, aseguradoras ( nombre )")
-    .eq("paciente_id", id)
-    .eq("medico_id", medico.id)
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false });
 
   const sexoLabel =
     paciente.sexo === "M"
