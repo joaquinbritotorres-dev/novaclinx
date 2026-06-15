@@ -104,7 +104,12 @@ export default async function PerfilPublicoPage({
     <main className="min-h-screen bg-[#F7F7F4] px-6 py-12">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        // Escape de '<' para que un valor
+        // controlado por el médico (nombre/bio/dirección) no pueda romper el
+        // tag </script> e inyectar XSS en esta página pública sin login.
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
+        }}
       />
 
       <div className="w-full max-w-3xl mx-auto">
