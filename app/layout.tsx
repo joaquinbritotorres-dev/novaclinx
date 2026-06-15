@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import AppNav from "@/components/AppNav";
+import AppShell from "@/components/AppShell";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -25,9 +25,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${inter.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-background text-foreground">
-        <AppNav />
-        {children}
+      <body className="min-h-full bg-background text-foreground">
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );
