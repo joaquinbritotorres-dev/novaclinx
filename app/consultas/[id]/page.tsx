@@ -135,11 +135,21 @@ export default async function ConsultaPage({
     telefono: string | null;
   } | null;
 
-  const { data: factura } = await supabase
+  // Una consulta puede tener VARIAS facturas (reintentos tras rechazo/fallo).
+  // Elegimos la más relevante: la primera en estado "activo"
+  // (autorizada/procesando/pendiente); si no hay activa, la más reciente
+  // (que será rechazada/fallida) para poder mostrar el error y reintentar.
+  const { data: facturasConsulta } = await supabase
     .from("facturas")
-    .select("id, estado, datil_id, clave_acceso, error_mensaje")
+    .select("id, estado, clave_acceso, secuencial, numero_autorizacion, importe_total, errores")
     .eq("consulta_id", consulta.id)
-    .maybeSingle();
+    .order("creado_en", { ascending: false });
+
+  const ESTADOS_ACTIVOS = new Set(["autorizada", "procesando", "pendiente"]);
+  const factura =
+    (facturasConsulta ?? []).find((f) => ESTADOS_ACTIVOS.has(f.estado)) ??
+    (facturasConsulta ?? [])[0] ??
+    null;
 
   const { data: segurosPaciente } = await supabase
     .from("paciente_seguros")
