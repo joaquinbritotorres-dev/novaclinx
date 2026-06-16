@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createSupabaseServerClientWithServiceRole } from "@/lib/supabase/server";
+import { createSupabaseServiceRoleClient } from "@/lib/supabase/service-role";
 
 /**
  * Capa server-only sobre las funciones de Supabase Vault que custodian el
@@ -25,7 +25,7 @@ export async function guardarSkMedico(
   medicoId: string,
   sk: string
 ): Promise<string> {
-  const supabase = createSupabaseServerClientWithServiceRole();
+  const supabase = createSupabaseServiceRoleClient();
 
   const { data, error } = await supabase.rpc("guardar_sk_medico", {
     p_medico_id: medicoId,
@@ -49,7 +49,7 @@ export async function guardarSkMedico(
  * Devuelve el sk_ descifrado del médico, o null si aún no tiene credencial.
  */
 export async function leerSkMedico(medicoId: string): Promise<string | null> {
-  const supabase = createSupabaseServerClientWithServiceRole();
+  const supabase = createSupabaseServiceRoleClient();
 
   const { data, error } = await supabase.rpc("leer_sk_medico", {
     p_medico_id: medicoId,
@@ -72,7 +72,7 @@ export async function leerSkMedico(medicoId: string): Promise<string | null> {
  * config_facturacion. Idempotente: si el médico no tiene secreto, no falla.
  */
 export async function borrarSkMedico(medicoId: string): Promise<void> {
-  const supabase = createSupabaseServerClientWithServiceRole();
+  const supabase = createSupabaseServiceRoleClient();
 
   const { error } = await supabase.rpc("borrar_sk_medico", {
     p_medico_id: medicoId,

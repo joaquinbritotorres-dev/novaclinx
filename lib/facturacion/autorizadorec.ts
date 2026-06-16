@@ -246,3 +246,80 @@ export async function crearEmpresa(
 
   return empresa;
 }
+
+// ── Subir certificado (.p12) — multipart, auth "account" ───────────────
+
+/** Respuesta de AutorizadorEC al subir un certificado .p12. */
+export interface CertificadoSubido {
+  certificate: {
+    id: number;
+    fileName: string;
+    expiresAt: string;
+    isCurrent: boolean;
+    subjectCn: string;
+  };
+  validation: {
+    subjectCn: string;
+    issuerCn: string;
+    validFrom: string;
+    validTo: string;
+    isExpired: boolean;
+    daysUntilExpiry: number;
+  };
+}
+
+/**
+ * Sube el certificado .p12 de una empresa (POST .../certificates).
+ * multipart/form-data: campo "file" (el .p12) y "password" (su clave).
+ *
+ * ⚠ SEGURIDAD: nunca se loguea la `password` ni el contenido del .p12.
+ * El único log incluye companyId y la fecha de expiración.
+ */
+export async function subirCertificado(params: {
+  companyId: number;
+  p12: Blob;
+  password: string;
+}): Promise<CertificadoSubido> {
+  const form = new FormData();
+  // El boundary/Content-Type lo pone fetch solo (ver autorizadorecRequest).
+  form.append("file", params.p12, "certificado.p12");
+  form.append("password", params.password);
+
+  const result = await autorizadorecRequest<CertificadoSubido>({
+    path: `/client/companies/${params.companyId}/certificates`,
+    method: "POST",
+    auth: { type: "account" },
+    body: form,
+  });
+
+  console.log(
+    `[facturacion/autorizadorec] certificado subido company=${params.companyId} expiresAt=${result.certificate.expiresAt}`
+  );
+
+  return result;
+}
+
+// ── Habilitar tipos de documento — JSON, auth "account" ────────────────
+
+/** Tipo de documento habilitado que devuelve AutorizadorEC. */
+export interface TipoDocumentoHabilitado {
+  id: number;
+  companyId: number;
+  code: string;
+}
+
+/**
+ * Habilita tipos de documento para una empresa (PUT .../doc-types).
+ * Ej.: codes ["01"] = Factura.
+ */
+export async function habilitarTiposDocumento(params: {
+  companyId: number;
+  codes: string[];
+}): Promise<TipoDocumentoHabilitado[]> {
+  return autorizadorecRequest<TipoDocumentoHabilitado[]>({
+    path: `/client/companies/${params.companyId}/doc-types`,
+    method: "PUT",
+    auth: { type: "account" },
+    body: { codes: params.codes },
+  });
+}
