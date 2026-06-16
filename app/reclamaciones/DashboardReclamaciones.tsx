@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
 import type { RelojPresentacion, RelojPago, Semaforo } from "@/lib/reclamaciones/plazos";
+
+const EYEBROW = "text-xs font-medium uppercase tracking-[0.18em] text-[#8A8780]";
 
 export interface ReclamacionRow {
   id: string;
@@ -37,16 +40,18 @@ const ESTADO_LABELS: Record<string, string> = {
   rechazada:    "Rechazada",
 };
 
+// Paleta sobria — misma que RECLAMACION_BADGE del detalle de paciente,
+// extendida a los estados intermedios con tonos coherentes y apagados.
 const ESTADO_COLORS: Record<string, string> = {
-  borrador:     "bg-gray-100 text-gray-700",
-  armada:       "bg-blue-50 text-blue-700",
-  enviada:      "bg-blue-100 text-blue-800",
-  en_auditoria: "bg-yellow-100 text-yellow-800",
-  glosada:      "bg-orange-100 text-orange-800",
-  subsanada:    "bg-purple-100 text-purple-800",
-  aprobada:     "bg-teal-100 text-teal-800",
-  pagada:       "bg-green-100 text-green-700",
-  rechazada:    "bg-red-100 text-red-700",
+  borrador:     "bg-[#8A8780]/[0.14] text-[#5C5A54]",
+  armada:       "bg-[#8A8780]/[0.14] text-[#5C5A54]",
+  enviada:      "bg-[#0F766E]/[0.08] text-[#0F766E]",
+  en_auditoria: "bg-[#9A6B12]/[0.12] text-[#9A6B12]",
+  glosada:      "bg-[#9A6B12]/[0.12] text-[#9A6B12]",
+  subsanada:    "bg-[#0F766E]/[0.08] text-[#0F766E]",
+  aprobada:     "bg-[#3F7A5E]/[0.12] text-[#3F7A5E]",
+  pagada:       "bg-[#3F7A5E]/[0.12] text-[#3F7A5E]",
+  rechazada:    "bg-[#B91C1C]/[0.08] text-[#B91C1C]",
 };
 
 const CHIPS = [
@@ -70,19 +75,29 @@ function relojActivo(r: ReclamacionRow): { dias: number | null; semaforo: Semafo
 function filaBg(r: ReclamacionRow): string {
   const rel = relojActivo(r);
   if (!rel || rel.dias === null) return "";
-  if (rel.semaforo === "vencido")   return "bg-red-50";
-  if (rel.semaforo === "pendiente") return "bg-amber-50";
+  if (rel.semaforo === "vencido")   return "bg-[#B91C1C]/[0.04]";
+  if (rel.semaforo === "pendiente") return "bg-[#9A6B12]/[0.05]";
   return "";
 }
 
 function RelojCell({ r }: { r: ReclamacionRow }) {
   const rel = relojActivo(r);
-  if (!rel || rel.dias === null) return <span className="text-[#94A3B8]">—</span>;
+  if (!rel || rel.dias === null) return <span className="text-[#A8A49C]">—</span>;
   if (rel.semaforo === "vencido")
-    return <span className="text-[#DC2626] font-medium text-xs">Vencido ({Math.abs(rel.dias)}d)</span>;
+    return (
+      <span className="inline-flex items-center gap-1 text-[#B91C1C] font-medium text-xs">
+        <AlertTriangle className="h-3.5 w-3.5" strokeWidth={1.75} />
+        Vencido ({Math.abs(rel.dias)}d)
+      </span>
+    );
   if (rel.semaforo === "pendiente")
-    return <span className="text-[#D97706] font-medium text-xs">⚠ {rel.dias}d</span>;
-  return <span className="text-[#059669] text-xs">{rel.dias}d</span>;
+    return (
+      <span className="inline-flex items-center gap-1 text-[#9A6B12] font-medium text-xs">
+        <AlertTriangle className="h-3.5 w-3.5" strokeWidth={1.75} />
+        {rel.dias}d
+      </span>
+    );
+  return <span className="text-[#5C5A54] text-xs">{rel.dias}d</span>;
 }
 
 export default function DashboardReclamaciones({ reclamaciones }: Props) {
@@ -117,41 +132,43 @@ export default function DashboardReclamaciones({ reclamaciones }: Props) {
     <div>
       {/* Banner de alerta */}
       {porVencer.length > 0 && (
-        <div className="mb-5 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-          <span className="text-amber-600 mt-0.5 shrink-0">⚠</span>
-          <p className="text-sm text-amber-800">
-            Tienes <span className="font-semibold">{porVencer.length}</span> reclamación{porVencer.length > 1 ? "es" : ""} por vencer en los próximos 15 días.
+        <div className="mb-6 flex items-start gap-3 bg-[#9A6B12]/[0.07] border border-[#9A6B12]/20 rounded-xl px-4 py-3">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-[#9A6B12]" strokeWidth={1.75} />
+          <p className="text-sm text-[#5C5A54]">
+            Tienes <span className="font-semibold text-[#1A1A18]">{porVencer.length}</span> reclamación{porVencer.length > 1 ? "es" : ""} por vencer en los próximos 15 días.
           </p>
         </div>
       )}
 
-      {/* Tarjetas de resumen */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        <Card
-          titulo="Por cobrar"
-          valor={usd(sumaMonto(porCobrar))}
-          sub={`${porCobrar.length} reclamación${porCobrar.length !== 1 ? "es" : ""}`}
-          color="text-[#0F766E]"
-        />
-        <Card
-          titulo="Cobrado (mes)"
-          valor={usd(sumaPagado(cobradoMes))}
-          sub={`${cobradoMes.length} pagada${cobradoMes.length !== 1 ? "s" : ""}`}
-          color="text-[#059669]"
-        />
-        <Card
-          titulo="Por vencer"
-          valor={String(porVencer.length)}
-          sub={porVencer.length > 0 ? usd(sumaMonto(porVencer)) : "Sin urgencias"}
-          color={porVencer.length > 0 ? "text-[#D97706]" : "text-[#94A3B8]"}
-        />
-        <Card
-          titulo="Glosado"
-          valor={String(glosadas.length)}
-          sub={glosadas.length > 0 ? usd(sumaMonto(glosadas)) : "Sin glosas"}
-          color={glosadas.length > 0 ? "text-[#DC2626]" : "text-[#94A3B8]"}
-        />
-      </div>
+      {/* Resumen — estilo Stripe: una superficie con divisores hairline */}
+      <section className="mb-6 rounded-2xl border border-[#E7E3DB] bg-white">
+        <div className="grid grid-cols-2 divide-x divide-y divide-[#E7E3DB] sm:grid-cols-4 sm:divide-y-0">
+          <Card
+            titulo="Por cobrar"
+            valor={usd(sumaMonto(porCobrar))}
+            sub={`${porCobrar.length} reclamación${porCobrar.length !== 1 ? "es" : ""}`}
+            color="text-[#1A1A18]"
+          />
+          <Card
+            titulo="Cobrado (mes)"
+            valor={usd(sumaPagado(cobradoMes))}
+            sub={`${cobradoMes.length} pagada${cobradoMes.length !== 1 ? "s" : ""}`}
+            color="text-[#1A1A18]"
+          />
+          <Card
+            titulo="Por vencer"
+            valor={String(porVencer.length)}
+            sub={porVencer.length > 0 ? usd(sumaMonto(porVencer)) : "Sin urgencias"}
+            color={porVencer.length > 0 ? "text-[#9A6B12]" : "text-[#A8A49C]"}
+          />
+          <Card
+            titulo="Glosado"
+            valor={String(glosadas.length)}
+            sub={glosadas.length > 0 ? usd(sumaMonto(glosadas)) : "Sin glosas"}
+            color={glosadas.length > 0 ? "text-[#B91C1C]" : "text-[#A8A49C]"}
+          />
+        </div>
+      </section>
 
       {/* Chips de filtro */}
       <div className="flex flex-wrap gap-2 mb-4">

@@ -103,15 +103,18 @@ export default async function ReclamacionesPage() {
   });
 
   return (
-    <main className="min-h-screen bg-[#F7F7F4] px-6 py-8">
+    <main className="min-h-screen bg-[#F7F7F4] px-6 py-10">
       <div className="w-full max-w-5xl mx-auto">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-[#0F172A]">Reclamaciones a Aseguradoras</h1>
-            <p className="text-sm text-[#64748B] mt-1">
-              Gestiona los cobros por reembolso o red de prestadores.
-            </p>
-          </div>
+        <div className="mb-8">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#8A8780]">
+            Reclamaciones
+          </p>
+          <h1 className="mt-2 text-3xl md:text-4xl font-semibold tracking-tight text-[#1A1A18]">
+            Reclamaciones a Aseguradoras
+          </h1>
+          <p className="mt-1.5 text-sm text-[#8A8780]">
+            Gestiona los cobros por reembolso o red de prestadores.
+          </p>
         </div>
 
         <DashboardReclamaciones reclamaciones={reclamaciones} />
