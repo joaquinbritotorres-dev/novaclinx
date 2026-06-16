@@ -9,6 +9,7 @@ import {
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import CountUp from "./CountUp";
 import Reveal from "./Reveal";
+import RecordatorioFirmaOverlay from "./RecordatorioFirmaOverlay";
 
 // ─── Helpers de fecha (zona Guayaquil) ───────────────────────────────────────
 
@@ -83,11 +84,14 @@ export default async function DashboardPage() {
 
   const { data: medico } = await supabase
     .from("medicos")
-    .select("id, nombre, especialidad, registro_acess")
+    .select("id, nombre, especialidad, registro_acess, firma_object_key")
     .eq("user_id", user.id)
     .maybeSingle();
 
   if (!medico) redirect("/onboarding/especialidad");
+
+  // Recordatorio de firma: se muestra solo si el médico aún no tiene .p12.
+  const mostrarRecordatorioFirma = !medico.firma_object_key;
 
   const hoy = hoyGuayaquil();
   const finVentana = sumarDias(hoy, 14);
@@ -141,6 +145,7 @@ export default async function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-[#F7F7F4]">
+      {mostrarRecordatorioFirma && <RecordatorioFirmaOverlay />}
       <div className="mx-auto w-full max-w-6xl px-6 py-10">
         {/* ── Header ── */}
         <Reveal delay={0}>
