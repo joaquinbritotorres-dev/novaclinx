@@ -1,10 +1,13 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
+import { ArrowLeft, AlertTriangle } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { parseIndicaciones } from "@/lib/recetas/parseIndicaciones";
 import ImprimirButton from "./ImprimirButton";
+import ConsultaColapsable from "./ConsultaColapsable";
 
 const SEXO_LABELS: Record<string, string> = { M: "Masculino", F: "Femenino", O: "Otro" };
+const EYEBROW = "text-xs font-medium uppercase tracking-[0.18em] text-[#8A8780]";
 
 interface SeccionSoap {
   label: string;
@@ -52,6 +55,49 @@ function formatFecha(iso: string): string {
   });
 }
 
+/** Atenúa [NO REGISTRADO]/[VERIFICAR …] dentro del texto corrido del SOAP. */
+function conAtenuados(texto: string, keyBase: string) {
+  const partes = texto.split(/(\[NO REGISTRADO\]|\[VERIFICAR[^\]]*\])/g);
+  return partes.map((p, i) =>
+    /^\[(NO REGISTRADO|VERIFICAR)/.test(p) ? (
+      <span key={`${keyBase}-${i}`} className="text-[#A8A49C]">
+        {p}
+      </span>
+    ) : (
+      <span key={`${keyBase}-${i}`}>{p}</span>
+    )
+  );
+}
+
+/** Resumen de una línea para la cabecera colapsada de la consulta. */
+function resumenConsulta(secciones: SeccionSoap[]): string | null {
+  const primera = secciones[0]?.content?.split(/\n+/).map((l) => l.trim()).find(Boolean);
+  if (!primera) return null;
+  return primera.length > 110 ? primera.slice(0, 110) + "…" : primera;
+}
+
+function Dato({ label, valor }: { label: string; valor: string }) {
+  return (
+    <div className="flex items-baseline gap-2">
+      <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-[#8A8780]">
+        {label}
+      </span>
+      <span className="text-sm text-[#1A1A18]">{valor}</span>
+    </div>
+  );
+}
+
+function DatoGrid({ label, valor }: { label: string; valor: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-[#8A8780]">
+        {label}
+      </dt>
+      <dd className="mt-0.5 text-sm text-[#1A1A18]">{valor}</dd>
+    </div>
+  );
+}
+
 export default async function HistoriaClinicaPage({
   params,
 }: {
@@ -95,193 +141,217 @@ export default async function HistoriaClinicaPage({
     .eq("aprobada_por_medico", true)
     .order("fecha", { ascending: true });
 
-  const datos: { label: string; value: string | null }[] = [
-    { label: "N.° de historia", value: paciente.numero_historia ?? null },
-    { label: "Identificación", value: paciente.identificacion ?? null },
-    {
-      label: "Fecha de nacimiento",
-      value: paciente.fecha_nacimiento ? formatFecha(paciente.fecha_nacimiento + "T12:00:00") : null,
-    },
-    { label: "Edad", value: paciente.edad != null ? `${paciente.edad} años` : null },
-    { label: "Sexo", value: paciente.sexo ? (SEXO_LABELS[paciente.sexo] ?? paciente.sexo) : null },
-    { label: "Teléfono", value: paciente.telefono ?? null },
-    { label: "Correo", value: paciente.email ?? null },
-    { label: "Dirección", value: paciente.direccion ?? null },
-    { label: "Condición crónica", value: paciente.condicion_cronica ?? null },
-    { label: "Paciente desde", value: formatFecha(paciente.created_at) },
-  ];
+  // Más reciente primero para la línea de tiempo (solo presentación).
+  const consultasDesc = [...(consultas ?? [])].reverse();
+
+  const consentimientoTexto = paciente.consentimiento_datos_at
+    ? `Otorgado el ${formatFecha(paciente.consentimiento_datos_at)} (versión ${paciente.consentimiento_datos_version ?? "—"})`
+    : "No registrado";
+
+  const sexoLabel = paciente.sexo ? (SEXO_LABELS[paciente.sexo] ?? paciente.sexo) : null;
 
   return (
-    <main className="min-h-screen bg-white px-8 py-8 print:px-0 print:py-0">
-      <div className="w-full max-w-4xl mx-auto">
+    <main className="min-h-screen bg-[#F7F7F4] print:bg-white">
+      <div className="mx-auto w-full max-w-4xl px-6 py-10 print:px-0 print:py-0">
         {/* Barra de acciones — no se imprime */}
-        <div className="flex items-center justify-between mb-8 print:hidden">
+        <div className="mb-8 flex items-center justify-between print:hidden">
           <Link
             href={`/pacientes/${paciente.id}`}
-            className="text-sm text-[#0F766E] hover:underline"
+            className="inline-flex items-center gap-1.5 text-sm text-[#5C5A54] transition-colors hover:text-[#1A1A18]"
           >
-            ← Volver al paciente
+            <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
+            Volver al paciente
           </Link>
           <ImprimirButton />
         </div>
 
-        {/* Encabezado del documento */}
-        <header className="border-b-2 border-[#0F766E] pb-4 mb-6">
-          <h1 className="text-2xl font-bold text-[#0F172A]">Historia clínica</h1>
-          <div className="flex items-start justify-between gap-4 mt-2">
-            <div>
-              <p className="text-lg font-semibold text-[#0F172A]">{paciente.nombre}</p>
-              {paciente.numero_historia && (
-                <p className="text-sm text-[#64748B] font-mono">{paciente.numero_historia}</p>
+        {/* Documento */}
+        <article className="rounded-2xl border border-[#E7E3DB] bg-white px-8 py-9 print:rounded-none print:border-0 print:px-0 print:py-0">
+          {/* Encabezado del documento (legal) */}
+          <header className="border-b border-[#E7E3DB] pb-6">
+            <div className="flex items-start justify-between gap-6">
+              <div className="min-w-0">
+                <p className={`${EYEBROW} mb-2`}>Historia clínica</p>
+                <h1 className="text-3xl font-semibold tracking-tight text-[#1A1A18]">
+                  {paciente.nombre}
+                </h1>
+                {paciente.numero_historia && (
+                  <p className="mt-1 font-mono text-sm text-[#8A8780]">
+                    {paciente.numero_historia}
+                  </p>
+                )}
+              </div>
+              <div className="shrink-0 text-right text-sm text-[#5C5A54]">
+                <p className="font-medium text-[#1A1A18]">{medico.nombre}</p>
+                {medico.registro_acess && (
+                  <p className="text-xs">Registro ACESS: {medico.registro_acess}</p>
+                )}
+                <p className="mt-1 text-xs text-[#A8A49C]">
+                  Generado el {formatFecha(new Date().toISOString())}
+                </p>
+              </div>
+            </div>
+          </header>
+
+          {/* Ficha del paciente */}
+          <section className="border-b border-[#E7E3DB] py-6">
+            <div className="flex flex-wrap items-center gap-x-7 gap-y-3">
+              {paciente.identificacion && (
+                <Dato label="Identificación" valor={paciente.identificacion} />
+              )}
+              {paciente.edad != null && <Dato label="Edad" valor={`${paciente.edad} años`} />}
+              {sexoLabel && <Dato label="Sexo" valor={sexoLabel} />}
+              {paciente.telefono && <Dato label="Teléfono" valor={paciente.telefono} />}
+              <Dato label="Paciente desde" valor={formatFecha(paciente.created_at)} />
+            </div>
+
+            <dl className="mt-4 grid grid-cols-2 gap-x-7 gap-y-2.5 border-t border-[#E7E3DB] pt-4 sm:grid-cols-3">
+              {paciente.fecha_nacimiento && (
+                <DatoGrid
+                  label="Fecha de nacimiento"
+                  valor={formatFecha(paciente.fecha_nacimiento + "T12:00:00")}
+                />
+              )}
+              {paciente.direccion && <DatoGrid label="Dirección" valor={paciente.direccion} />}
+              {paciente.email && <DatoGrid label="Correo" valor={paciente.email} />}
+              {paciente.condicion_cronica && (
+                <DatoGrid label="Condición crónica" valor={paciente.condicion_cronica} />
+              )}
+              <DatoGrid label="Consentimiento LOPDP" valor={consentimientoTexto} />
+            </dl>
+
+            {/* Alergias — sobrio */}
+            <div className="mt-4 border-t border-[#E7E3DB] pt-4">
+              <p className={EYEBROW}>Alergias</p>
+              {paciente.alergias ? (
+                <p className="mt-1 flex items-center gap-2 text-base text-[#1A1A18]">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-[#9A6B12]" strokeWidth={1.75} />
+                  {paciente.alergias}
+                </p>
+              ) : (
+                <p className="mt-1 text-sm text-[#A8A49C]">Sin alergias registradas.</p>
               )}
             </div>
-            <div className="text-right text-sm text-[#475569]">
-              <p className="font-medium">{medico.nombre}</p>
-              {medico.registro_acess && <p>Registro ACESS: {medico.registro_acess}</p>}
-              <p className="text-xs text-[#94A3B8] mt-1">
-                Generado el {formatFecha(new Date().toISOString())}
+          </section>
+
+          {/* Línea de tiempo de consultas */}
+          <section className="pt-6">
+            <p className={`${EYEBROW} mb-1`}>
+              Consultas ({consultasDesc.length})
+            </p>
+
+            {consultasDesc.length === 0 ? (
+              <p className="mt-4 text-sm text-[#8A8780]">
+                Sin consultas aprobadas registradas.
               </p>
-            </div>
-          </div>
-        </header>
-
-        {/* Alergias destacadas */}
-        {paciente.alergias && (
-          <div className="border-2 border-[#DC2626] rounded-lg px-4 py-3 mb-6">
-            <p className="text-xs font-bold text-[#DC2626] uppercase tracking-wide">Alergias</p>
-            <p className="text-sm text-[#0F172A] mt-1">{paciente.alergias}</p>
-          </div>
-        )}
-
-        {/* Datos del paciente */}
-        <section className="mb-8">
-          <h2 className="text-sm font-bold text-[#0F766E] uppercase tracking-wide border-b border-[#E5E7EB] pb-1 mb-3">
-            Datos del paciente
-          </h2>
-          <dl className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-            {datos
-              .filter((d) => d.value)
-              .map((d) => (
-                <div key={d.label} className="flex gap-2">
-                  <dt className="text-[#64748B] shrink-0">{d.label}:</dt>
-                  <dd className="text-[#0F172A] font-medium">{d.value}</dd>
-                </div>
-              ))}
-            <div className="flex gap-2 col-span-2">
-              <dt className="text-[#64748B] shrink-0">Consentimiento de datos (LOPDP):</dt>
-              <dd className="text-[#0F172A] font-medium">
-                {paciente.consentimiento_datos_at
-                  ? `Otorgado el ${formatFecha(paciente.consentimiento_datos_at)} (versión ${paciente.consentimiento_datos_version ?? "—"})`
-                  : "No registrado"}
-              </dd>
-            </div>
-          </dl>
-        </section>
-
-        {/* Consultas */}
-        <section>
-          <h2 className="text-sm font-bold text-[#0F766E] uppercase tracking-wide border-b border-[#E5E7EB] pb-1 mb-4">
-            Consultas ({consultas?.length ?? 0})
-          </h2>
-
-          {!consultas || consultas.length === 0 ? (
-            <p className="text-sm text-[#64748B]">Sin consultas aprobadas registradas.</p>
-          ) : (
-            <div className="space-y-6">
-              {consultas.map((c) => {
-                const secciones = parseSoap(c.nota_soap);
-                const indicaciones = parseIndicaciones(c.indicaciones);
-                let signos: string[] | null = null;
-                if (c.signos_alarma) {
-                  try {
-                    const arr = JSON.parse(c.signos_alarma);
-                    if (Array.isArray(arr) && arr.length > 0) signos = arr as string[];
-                  } catch {
-                    // sin signos válidos
+            ) : (
+              <div>
+                {consultasDesc.map((c) => {
+                  const secciones = parseSoap(c.nota_soap);
+                  const indicaciones = parseIndicaciones(c.indicaciones);
+                  let signos: string[] | null = null;
+                  if (c.signos_alarma) {
+                    try {
+                      const arr = JSON.parse(c.signos_alarma);
+                      if (Array.isArray(arr) && arr.length > 0) signos = arr as string[];
+                    } catch {
+                      // sin signos válidos
+                    }
                   }
-                }
 
-                return (
-                  <article
-                    key={c.id}
-                    className="border border-[#E5E7EB] rounded-lg p-4 break-inside-avoid"
-                  >
-                    <div className="flex items-center justify-between gap-2 mb-3 border-b border-[#F1F5F9] pb-2">
-                      <p className="text-sm font-bold text-[#0F172A]">
-                        {formatFecha(c.fecha)}
-                      </p>
-                      {c.cie10_codigo && (
-                        <p className="text-xs text-[#0F766E] font-mono">
-                          {c.cie10_codigo}
-                          {c.cie10_descripcion ? ` — ${c.cie10_descripcion}` : ""}
-                        </p>
-                      )}
-                    </div>
+                  return (
+                    <ConsultaColapsable
+                      key={c.id}
+                      fecha={formatFecha(c.fecha)}
+                      cie10Codigo={c.cie10_codigo ?? null}
+                      cie10Descripcion={c.cie10_descripcion ?? null}
+                      resumen={resumenConsulta(secciones)}
+                    >
+                      <div className="space-y-5">
+                        {secciones.map((s) => (
+                          <div key={s.label}>
+                            <p className={EYEBROW}>{s.label}</p>
+                            <p className="mt-1.5 max-w-[68ch] whitespace-pre-wrap text-base leading-7 text-[#1A1A18]">
+                              {conAtenuados(s.content, `${c.id}-${s.label}`)}
+                            </p>
+                          </div>
+                        ))}
 
-                    {secciones.map((s) => (
-                      <div key={s.label} className="mb-2">
-                        <p className="text-xs font-bold text-[#475569] uppercase">{s.label}</p>
-                        <p className="text-sm text-[#0F172A] whitespace-pre-wrap">{s.content}</p>
-                      </div>
-                    ))}
+                        {indicaciones && (
+                          <div>
+                            <p className={EYEBROW}>
+                              {indicaciones.tipo === "estructurado"
+                                ? "Medicamentos prescritos"
+                                : "Indicaciones"}
+                            </p>
+                            <ul className="mt-2 max-w-[68ch] space-y-1.5">
+                              {indicaciones.tipo === "estructurado"
+                                ? indicaciones.medicamentos.map((m, i) => (
+                                    <li
+                                      key={i}
+                                      className="flex items-start gap-3 text-base leading-7 text-[#1A1A18]"
+                                    >
+                                      <span className="mt-[0.6rem] h-1.5 w-1.5 shrink-0 rounded-full bg-[#0F766E]" />
+                                      <span>
+                                        <span className="capitalize">{m.dci}</span>
+                                        {m.nombreComercial ? ` (${m.nombreComercial})` : ""}{" "}
+                                        {m.formaFarmaceutica} {m.concentracion} — {m.dosis} ·{" "}
+                                        {m.frecuencia} · {m.duracionDias} días
+                                      </span>
+                                    </li>
+                                  ))
+                                : indicaciones.indicaciones.map((item, i) => (
+                                    <li
+                                      key={i}
+                                      className="flex items-start gap-3 text-base leading-7 text-[#1A1A18]"
+                                    >
+                                      <span className="mt-[0.6rem] h-1.5 w-1.5 shrink-0 rounded-full bg-[#0F766E]" />
+                                      <span>{item}</span>
+                                    </li>
+                                  ))}
+                            </ul>
+                          </div>
+                        )}
 
-                    {indicaciones && (
-                      <div className="mb-2">
-                        <p className="text-xs font-bold text-[#475569] uppercase">
-                          {indicaciones.tipo === "estructurado"
-                            ? "Medicamentos prescritos"
-                            : "Indicaciones"}
-                        </p>
-                        <ul className="text-sm text-[#0F172A] list-disc pl-5">
-                          {indicaciones.tipo === "estructurado"
-                            ? indicaciones.medicamentos.map((m, i) => (
-                                <li key={i}>
-                                  <span className="capitalize">{m.dci}</span>
-                                  {m.nombreComercial ? ` (${m.nombreComercial})` : ""}{" "}
-                                  {m.formaFarmaceutica} {m.concentracion} — {m.dosis} ·{" "}
-                                  {m.frecuencia} · {m.duracionDias} días
+                        {signos && (
+                          <div>
+                            <p className={EYEBROW}>Signos de alarma</p>
+                            <ul className="mt-2 max-w-[68ch] space-y-1.5">
+                              {signos.map((s, i) => (
+                                <li
+                                  key={i}
+                                  className="flex items-start gap-3 text-base leading-7 text-[#5A4A33]"
+                                >
+                                  <span className="mt-[0.6rem] h-1.5 w-1.5 shrink-0 rounded-full bg-[#B45309]" />
+                                  <span>{s}</span>
                                 </li>
-                              ))
-                            : indicaciones.indicaciones.map((item, i) => (
-                                <li key={i}>{item}</li>
                               ))}
-                        </ul>
+                            </ul>
+                          </div>
+                        )}
+
+                        {c.seguimiento_plazo && (
+                          <div>
+                            <p className={EYEBROW}>Próximo control</p>
+                            <p className="mt-1.5 max-w-[68ch] text-base leading-7 text-[#1A1A18]">
+                              {c.seguimiento_plazo}
+                              {c.seguimiento_motivo ? ` — ${c.seguimiento_motivo}` : ""}
+                            </p>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </ConsultaColapsable>
+                  );
+                })}
+              </div>
+            )}
+          </section>
 
-                    {signos && (
-                      <div className="mb-2">
-                        <p className="text-xs font-bold text-[#475569] uppercase">
-                          Signos de alarma
-                        </p>
-                        <ul className="text-sm text-[#0F172A] list-disc pl-5">
-                          {signos.map((s, i) => (
-                            <li key={i}>{s}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {c.seguimiento_plazo && (
-                      <p className="text-sm text-[#0F172A]">
-                        <span className="text-xs font-bold text-[#475569] uppercase">
-                          Próximo control:{" "}
-                        </span>
-                        {c.seguimiento_plazo}
-                        {c.seguimiento_motivo ? ` — ${c.seguimiento_motivo}` : ""}
-                      </p>
-                    )}
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        <footer className="mt-8 pt-4 border-t border-[#E5E7EB] text-xs text-[#94A3B8]">
-          Documento generado con Novaclinx para fines de registro clínico e inspección.
-          Conservación de datos conforme a la LOPDP del Ecuador.
-        </footer>
+          <footer className="mt-8 border-t border-[#E7E3DB] pt-5 text-xs leading-5 text-[#A8A49C]">
+            Documento generado con Novaclinx para fines de registro clínico e inspección.
+            Conservación de datos conforme a la LOPDP del Ecuador.
+          </footer>
+        </article>
       </div>
     </main>
   );
