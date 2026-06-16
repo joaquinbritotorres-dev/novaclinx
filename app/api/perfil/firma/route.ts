@@ -8,6 +8,7 @@ import {
   createSupabaseServerClientWithServiceRole,
 } from "@/lib/supabase/server";
 import { cifrar } from "@/lib/firma/cifrado";
+import { activarFacturacionMedico } from "@/lib/facturacion/onboarding";
 
 const BUCKET = "firmas-electronicas";
 const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
@@ -162,8 +163,34 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // ── Activar facturación electrónica (BEST-EFFORT; NO afecta la firma) ─────
+  // La firma de PDFs YA quedó guardada arriba. Pase lo que pase aquí, el éxito
+  // de la firma se mantiene: nunca cambiamos ni bloqueamos esa respuesta.
+  let facturacionActivada = false;
+  try {
+    const r = await activarFacturacionMedico({
+      medicoId: medico.id,
+      p12: new Blob([new Uint8Array(bytes)]),
+      passwordP12: password,
+      email: user.email ?? undefined,
+    });
+    facturacionActivada = r.activada;
+    console.log(
+      `[firma POST] facturación activada=${r.activada}${r.motivo ? ` motivo=${r.motivo}` : ""} medico=${medico.id}`
+    );
+  } catch (err) {
+    // Defensa extra: activarFacturacionMedico no debería lanzar, pero por si
+    // acaso, no afectamos la firma ya guardada.
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[firma POST] activación facturación falló (no afecta firma): ${message}`);
+  }
+
   // Solo se devuelve información no sensible
-  return NextResponse.json({ titular, valida_hasta: validaHasta });
+  return NextResponse.json({
+    titular,
+    valida_hasta: validaHasta,
+    facturacion_activada: facturacionActivada,
+  });
 }
 
 // ─── DELETE: borrar el .p12 y limpiar columnas ───────────────────────────────

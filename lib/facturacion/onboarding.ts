@@ -5,6 +5,7 @@ import {
   crearPuntoEmision,
   subirCertificado,
   habilitarTiposDocumento,
+  listarEmpresas,
   AutorizadorECError,
 } from "@/lib/facturacion/autorizadorec";
 import { guardarSkMedico } from "@/lib/facturacion/vault";
@@ -171,5 +172,155 @@ export async function darDeAltaMedico(
       `[onboarding] ✗ falló en "${paso}" medico=${params.medicoId}: ${message}`
     );
     throw new Error(`Onboarding falló en "${paso}": ${message}`);
+  }
+}
+
+/** ISO datetime/date → "YYYY-MM-DD". */
+function aFechaISO(s: string): string {
+  return new Date(s).toISOString().slice(0, 10);
+}
+
+/**
+ * Activa la facturación electrónica de un médico a partir de su .p12, SOLO si
+ * sus datos fiscales (ruc, nombre, dirección) están completos.
+ *
+ * ⚠ BEST-EFFORT: NUNCA lanza. Devuelve { activada, motivo } para que el caller
+ * (la subida de la firma de PDFs) no se vea afectado pase lo que pase aquí.
+ *
+ * Maneja el caso de empresa YA existente con el mismo RUC en AutorizadorEC
+ * (la API no deja crear dos con el mismo RUC): la reusa/completa en vez de crear.
+ *
+ * @param params.email Email del médico (de auth). Solo se necesita para CREAR
+ *   una empresa nueva (caso B); en caso A (empresa existente) no se usa.
+ *
+ * ⚠ SEGURIDAD (server-only): nunca se loguea el sk_ ni la passwordP12.
+ */
+export async function activarFacturacionMedico(params: {
+  medicoId: string;
+  p12: Blob;
+  passwordP12: string;
+  email?: string;
+}): Promise<{ activada: boolean; motivo?: string }> {
+  try {
+    const supabase = createSupabaseServiceRoleClient();
+
+    // 1) Datos fiscales del médico.
+    const { data: medico } = await supabase
+      .from("medicos")
+      .select("ruc, nombre, direccion_consultorio, telefono_consultorio")
+      .eq("id", params.medicoId)
+      .maybeSingle();
+    if (!medico) return { activada: false, motivo: "médico no encontrado" };
+
+    const ruc = (medico.ruc ?? "").trim();
+    const nombre = (medico.nombre ?? "").trim();
+    const direccion = (medico.direccion_consultorio ?? "").trim();
+    const telefono = (medico.telefono_consultorio ?? "").trim() || undefined;
+
+    // 2) Validar datos completos. Si faltan, NO se activa (sin romper nada).
+    if (!ruc || !nombre || !direccion) {
+      return { activada: false, motivo: "datos fiscales incompletos" };
+    }
+
+    // 3) ¿Ya activada? Si sí, no recreamos nada.
+    // (Si el certificado cambiara, no se resube aquí; se manejaría aparte.)
+    const { data: config } = await supabase
+      .from("config_facturacion")
+      .select("provider_company_id, estado")
+      .eq("medico_id", params.medicoId)
+      .maybeSingle();
+    if (config && config.estado === "activo" && config.provider_company_id) {
+      return { activada: true, motivo: "ya estaba activada" };
+    }
+
+    // 4) ¿Existe empresa con ese RUC en AutorizadorEC?
+    const empresas = await listarEmpresas();
+    const empresa = empresas.find((e) => (e.ruc ?? "").trim() === ruc);
+
+    if (empresa) {
+      // ── CASO A: completar empresa existente (no se puede recrear el RUC) ──
+      const companyId = empresa.id;
+      const sk = empresa.apiKey;
+      if (!sk) return { activada: false, motivo: "la empresa existente no tiene apiKey" };
+
+      // Punto de emisión "001" (tolerar si ya existe).
+      try {
+        await crearPuntoEmision({ sk, code: "001" });
+      } catch (err) {
+        if (!(err instanceof AutorizadorECError && esPuntoYaExiste(err))) throw err;
+      }
+
+      // Tipo de documento factura "01" (tolerar si ya estaba habilitado).
+      try {
+        await habilitarTiposDocumento({ companyId, codes: ["01"] });
+      } catch (err) {
+        if (!(err instanceof AutorizadorECError && esPuntoYaExiste(err))) throw err;
+      }
+
+      // Certificado: subir/actualizar; si falla (ya hay uno válido), tolerar y
+      // leer la vigencia del certificado actual del listado.
+      let vigencia: string | null = null;
+      try {
+        const cert = await subirCertificado({
+          companyId,
+          p12: params.p12,
+          password: params.passwordP12,
+        });
+        vigencia = aFechaISO(cert.certificate.expiresAt);
+      } catch (err) {
+        const certActual =
+          empresa.certificates?.find((c) => c.isCurrent) ?? empresa.certificates?.[0];
+        vigencia = certActual ? aFechaISO(certActual.expiresAt) : null;
+        const message = err instanceof Error ? err.message : String(err);
+        console.log(
+          `[activar] certificado no resubido (se reusa el actual) medico=${params.medicoId}: ${message}`
+        );
+      }
+
+      const { error: upsertError } = await supabase
+        .from("config_facturacion")
+        .upsert(
+          {
+            medico_id: params.medicoId,
+            ruc,
+            razon_social: nombre,
+            nombre_comercial: nombre, // medicos no tiene nombre_comercial → usa nombre
+            provider_company_id: String(companyId),
+            ambiente: "pruebas",
+            certificado_vigencia_hasta: vigencia,
+            estado: "activo",
+          },
+          { onConflict: "medico_id" }
+        );
+      if (upsertError) throw new Error(`upsert config_facturacion: ${upsertError.message}`);
+
+      await guardarSkMedico(params.medicoId, sk);
+      return { activada: true };
+    }
+
+    // ── CASO B: médico nuevo → crear empresa de cero ──
+    if (!params.email) {
+      return { activada: false, motivo: "falta el email del médico para crear la empresa" };
+    }
+    await darDeAltaMedico({
+      medicoId: params.medicoId,
+      razonSocial: nombre,
+      ruc,
+      direccion,
+      email: params.email,
+      nombreComercial: nombre,
+      telefono,
+      p12: params.p12,
+      passwordP12: params.passwordP12,
+      ambiente: "pruebas",
+    });
+    return { activada: true };
+  } catch (err) {
+    // NUNCA lanzar: la firma de PDFs ya quedó guardada y no debe verse afectada.
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(
+      `[activar] no se pudo activar la facturación medico=${params.medicoId}: ${message}`
+    );
+    return { activada: false, motivo: message };
   }
 }
