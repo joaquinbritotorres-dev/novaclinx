@@ -113,8 +113,14 @@ export async function GET(
     if (err instanceof RideNoDisponibleError) {
       return NextResponse.json({ error: err.message }, { status: 502 });
     }
-    // Cualquier otro error → 500 genérico.
-    const msg = err instanceof Error ? err.message : "Error interno.";
-    return NextResponse.json({ error: msg }, { status: 500 });
+    // Cualquier otro error → 500 con mensaje fijo (el detalle solo en server,
+    // para no filtrar mensajes internos al usuario).
+    console.error(
+      `[reclamaciones/paquete] error inesperado: ${err instanceof Error ? err.message : String(err)}`
+    );
+    return NextResponse.json(
+      { error: "No pudimos generar el paquete. Intenta de nuevo." },
+      { status: 500 }
+    );
   }
 }

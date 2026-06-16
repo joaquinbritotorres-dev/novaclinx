@@ -113,31 +113,7 @@ export async function POST(
     return NextResponse.json({ error: "Médico no encontrado." }, { status: 403 });
   }
 
-  // 1. Get item + verify ownership
-  const { data: itemRow } = await supabase
-    .from("inventario_items")
-    .select("id, cantidad, nombre")
-    .eq("id", id)
-    .eq("medico_id", medicoId)
-    .is("deleted_at", null)
-    .maybeSingle();
-
-  if (!itemRow) {
-    return NextResponse.json(
-      { error: "Ítem no encontrado o no autorizado." },
-      { status: 404 }
-    );
-  }
-
-  // 2. Validate stock for salida
-  if (tipo_movimiento === "salida" && cantidad > (itemRow.cantidad as number)) {
-    return NextResponse.json(
-      { error: `Stock insuficiente: solo quedan ${itemRow.cantidad}.` },
-      { status: 400 }
-    );
-  }
-
-  // 3. Validate paciente_id ownership
+  // Validar propiedad del paciente_id (si viene), igual que antes.
   if (paciente_id) {
     const { data: pac } = await supabase
       .from("pacientes")
@@ -151,42 +127,42 @@ export async function POST(
     }
   }
 
-  const nuevaCantidad =
-    tipo_movimiento === "entrada"
-      ? (itemRow.cantidad as number) + cantidad
-      : (itemRow.cantidad as number) - cantidad;
+  // Movimiento ATÓMICO vía RPC: bloquea la fila del ítem (FOR UPDATE), valida
+  // stock y actualiza la cantidad + inserta el movimiento en una sola
+  // transacción. Evita el descuadre por carrera (doble clic / 2 pestañas). El
+  // RPC deriva el medico_id de auth.uid() y respeta la RLS (propiedad garantizada).
+  const { data, error: rpcError } = await supabase.rpc(
+    "registrar_movimiento_inventario",
+    {
+      p_item_id: id,
+      p_tipo: tipo_movimiento,
+      p_cantidad: cantidad,
+      p_motivo: motivo,
+      p_paciente_id: paciente_id,
+    }
+  );
 
-  // 4. Insert movement
-  const { data: mov, error: movError } = await supabase
-    .from("inventario_movimientos")
-    .insert({
-      medico_id: medicoId,
-      item_id: id,
-      tipo_movimiento,
-      cantidad,
-      motivo,
-      paciente_id,
-    })
-    .select()
-    .single();
-
-  if (movError) {
+  if (rpcError || !data) {
     return NextResponse.json(
       { error: "No se pudo registrar el movimiento." },
       { status: 500 }
     );
   }
-
-  // 5. Update item stock (best-effort; corrección posible vía PATCH /inventario/[id])
-  const { error: updateError } = await supabase
-    .from("inventario_items")
-    .update({ cantidad: nuevaCantidad })
-    .eq("id", id)
-    .eq("medico_id", medicoId);
-
-  if (updateError) {
-    console.error("[inventario] stock update failed after movement insert:", updateError);
+  if (data.resultado === "not_found") {
+    return NextResponse.json(
+      { error: "Ítem no encontrado o no autorizado." },
+      { status: 404 }
+    );
+  }
+  if (data.resultado === "insufficient_stock") {
+    return NextResponse.json(
+      { error: `Stock insuficiente: solo quedan ${data.disponible}.` },
+      { status: 400 }
+    );
   }
 
-  return NextResponse.json({ movimiento: mov, nuevaCantidad }, { status: 201 });
+  return NextResponse.json(
+    { movimiento: data.movimiento, nuevaCantidad: data.nueva_cantidad },
+    { status: 201 }
+  );
 }
