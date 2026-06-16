@@ -48,17 +48,23 @@ export default async function ReclamacionesPage() {
     .map((r: any) => r.consulta_id)
     .filter(Boolean) as string[];
 
-  let facturaMap: Record<string, { created_at: string }> = {};
+  // Esquema AutorizadorEC: "lista" = estado 'autorizada'. La fecha de la
+  // factura para el cálculo de plazo es fecha_autorizacion (con creado_en de
+  // respaldo). Orden desc → al deduplicar por consulta queda la más reciente.
+  let facturaMap: Record<string, { fechaFactura: string | null }> = {};
   if (consultaIds.length > 0) {
     const { data: facturas } = await supabase
       .from("facturas")
-      .select("consulta_id, created_at")
+      .select("consulta_id, fecha_autorizacion, creado_en")
       .in("consulta_id", consultaIds)
-      .in("estado", ["emitida", "autorizada"]);
+      .eq("estado", "autorizada")
+      .order("creado_en", { ascending: false });
 
     for (const f of facturas ?? []) {
       if (f.consulta_id && !facturaMap[f.consulta_id]) {
-        facturaMap[f.consulta_id] = { created_at: f.created_at };
+        facturaMap[f.consulta_id] = {
+          fechaFactura: f.fecha_autorizacion ?? f.creado_en ?? null,
+        };
       }
     }
   }
@@ -79,7 +85,7 @@ export default async function ReclamacionesPage() {
       ventana_pago_dias:         aseg?.ventana_pago_dias ?? 60,
       cuenta_desde:              aseg?.cuenta_desde ?? "factura",
       plazo_confirmado:          aseg?.plazo_confirmado ?? false,
-      fechaFactura:              factura?.created_at ?? null,
+      fechaFactura:              factura?.fechaFactura ?? null,
       fechaAtencion:             r.fecha_atencion ?? null,
       fechaEnvio:                r.fecha_envio ?? null,
     });

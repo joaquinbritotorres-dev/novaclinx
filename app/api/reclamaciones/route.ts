@@ -135,12 +135,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Monto desde la factura de la consulta (si ya existe)
+    // Monto desde la factura de la consulta (si ya existe). Esquema
+    // AutorizadorEC: estado 'autorizada' y columna importe_total; la más
+    // reciente si hubo reintentos.
     const { data: facturaParaMonto } = await supabase
       .from("facturas")
-      .select("monto")
+      .select("importe_total")
       .eq("consulta_id", consulta.id)
-      .in("estado", ["emitida", "autorizada"])
+      .eq("estado", "autorizada")
+      .order("creado_en", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     // Insert reclamacion
@@ -157,7 +161,7 @@ export async function POST(request: NextRequest) {
         tipo,
         fecha_atencion: consulta.fecha,
         estado: 'borrador',
-        monto: facturaParaMonto?.monto ?? null,
+        monto: facturaParaMonto?.importe_total ?? null,
       })
       .select("id")
       .single();

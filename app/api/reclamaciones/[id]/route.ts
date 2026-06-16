@@ -69,12 +69,16 @@ export async function GET(
       plazo_confirmado: boolean;
     } | null;
 
-    // Factura — necesaria antes del cálculo de plazo (cuenta_desde='factura' usa created_at)
+    // Factura — necesaria antes del cálculo de plazo (cuenta_desde='factura'
+    // usa la fecha de la factura). Esquema AutorizadorEC: "lista" = estado
+    // 'autorizada'; puede haber varias filas por reintentos → la más reciente.
     const { data: factura } = await supabase
       .from("facturas")
-      .select("numero, estado, created_at")
+      .select("secuencial, estado, fecha_autorizacion, creado_en, clave_acceso")
       .eq("consulta_id", reclamacion.consulta_id)
-      .in("estado", ["emitida", "autorizada"])
+      .eq("estado", "autorizada")
+      .order("creado_en", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     // Validador Anti-glosa
@@ -132,7 +136,7 @@ export async function GET(
         ventana_pago_dias: aseguradora?.ventana_pago_dias ?? 60,
         cuenta_desde: aseguradora?.cuenta_desde ?? "factura",
         plazo_confirmado: aseguradora?.plazo_confirmado ?? false,
-        fechaFactura: factura?.created_at ?? null,
+        fechaFactura: factura?.fecha_autorizacion ?? factura?.creado_en ?? null,
         fechaAtencion: reclamacion.fecha_atencion ?? null,
         fechaEnvio: null,
       });
@@ -154,7 +158,7 @@ export async function GET(
       item: "Factura electrónica",
       estado: factura ? "ok" : "falta",
       mensaje: factura
-        ? `Emitida — Factura N° ${factura.numero ?? factura.estado}`
+        ? `Autorizada${factura.secuencial ? ` — Factura N° ${factura.secuencial}` : ""}`
         : "Sin factura emitida",
     });
 
