@@ -1,8 +1,21 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
+import { ArrowLeft, Plus, FileText, AlertTriangle } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import EditarPacienteModal from "./EditarPacienteModal";
 import ComunicacionesSection from "./ComunicacionesSection";
+import PacienteTabs from "./PacienteTabs";
+import Reveal from "./Reveal";
+
+const EYEBROW = "text-xs font-medium uppercase tracking-[0.18em] text-[#8A8780]";
+
+const RECLAMACION_BADGE: Record<string, string> = {
+  borrador: "bg-[#8A8780]/[0.14] text-[#5C5A54]",
+  enviada: "bg-[#0F766E]/[0.08] text-[#0F766E]",
+  pagada: "bg-[#3F7A5E]/[0.12] text-[#3F7A5E]",
+  glosada: "bg-[#9A6B12]/[0.12] text-[#9A6B12]",
+  rechazada: "bg-[#B91C1C]/[0.08] text-[#B91C1C]",
+};
 
 const SEGURO_LABELS: Record<string, string> = {
   ninguno: "Sin seguro",
@@ -113,244 +126,239 @@ export default async function PacientePerfilPage({
       ? (SEGURO_LABELS[paciente.tipo_seguro] ?? paciente.tipo_seguro)
       : null;
 
-  return (
-    <main className="min-h-screen bg-[#F7F7F4] px-6 py-8">
-      <div className="w-full max-w-4xl mx-auto">
-        <div className="mb-6">
-          <Link href="/pacientes" className="text-sm text-[#0F766E] hover:underline">
-            ← Pacientes
-          </Link>
-        </div>
+  const consentimientoLabel = p.consentimiento_datos_at
+    ? `Otorgado · ${new Date(p.consentimiento_datos_at).toLocaleDateString("es-EC", {
+        timeZone: "America/Guayaquil",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })}`
+    : null;
 
-        {/* Tarjeta del paciente */}
-        <div className="bg-white rounded-xl border border-[#E5E7EB] p-5 mb-5">
-          <div className="flex items-start justify-between gap-3 mb-3">
-            <h1 className="text-lg font-bold text-[#0F172A] leading-tight">
-              {paciente.nombre}
-            </h1>
-            {paciente.numero_historia && (
-              <span className="shrink-0 text-xs font-mono text-[#0F766E] bg-[#F0FDFB] border border-[#99F6E4] rounded px-2 py-0.5">
-                {paciente.numero_historia}
-              </span>
-            )}
-          </div>
-
-          {/* Alergias — alerta clínica visible */}
-          {paciente.alergias && (
-            <div className="mb-3 rounded-lg bg-[#FEF2F2] border border-[#FECACA] px-3 py-2">
-              <p className="text-xs font-semibold text-[#991B1B] uppercase tracking-wide mb-0.5">
-                Alergias
+  // ── Contenido de tabs (server-renderizado, pasado como nodes) ──
+  const historial =
+    !consultas || consultas.length === 0 ? (
+      <p className="text-sm text-[#8A8780]">Sin consultas registradas.</p>
+    ) : (
+      <ul className="divide-y divide-[#E7E3DB]">
+        {consultas.map((c) => (
+          <li key={c.id}>
+            <Link
+              href={`/consultas/${c.id}`}
+              className="block -mx-2 rounded-lg px-2 py-3.5 transition-colors hover:bg-[#F7F7F4]"
+            >
+              <p className="text-xs font-medium text-[#0F766E]">
+                {new Date(c.fecha).toLocaleDateString("es-EC", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
               </p>
-              <p className="text-sm text-[#7F1D1D]">{paciente.alergias}</p>
-            </div>
-          )}
-
-          {/* Grid de datos */}
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm">
-            {paciente.cedula && (
-              <>
-                <dt className="text-xs text-[#94A3B8]">Cédula / Pasaporte</dt>
-                <dd className="text-[#0F172A] font-medium">{paciente.cedula}</dd>
-              </>
-            )}
-
-            {fechaNacimientoDisplay && (
-              <>
-                <dt className="text-xs text-[#94A3B8]">Fecha de nac.</dt>
-                <dd className="text-[#0F172A]">{fechaNacimientoDisplay}</dd>
-              </>
-            )}
-
-            {edadDisplay != null && (
-              <>
-                <dt className="text-xs text-[#94A3B8]">Edad</dt>
-                <dd className="text-[#0F172A]">{edadDisplay} años</dd>
-              </>
-            )}
-
-            {sexoLabel && (
-              <>
-                <dt className="text-xs text-[#94A3B8]">Sexo</dt>
-                <dd className="text-[#0F172A]">{sexoLabel}</dd>
-              </>
-            )}
-
-            {seguroLabel && seguroLabel !== "Sin seguro" && (
-              <>
-                <dt className="text-xs text-[#94A3B8]">Seguro</dt>
-                <dd className="text-[#0F172A]">{seguroLabel}</dd>
-              </>
-            )}
-
-            {paciente.telefono && (
-              <>
-                <dt className="text-xs text-[#94A3B8]">Teléfono</dt>
-                <dd className="text-[#0F172A]">{paciente.telefono}</dd>
-              </>
-            )}
-
-            {paciente.direccion && (
-              <>
-                <dt className="text-xs text-[#94A3B8] col-span-1">Dirección</dt>
-                <dd className="text-[#0F172A] col-span-1">{paciente.direccion}</dd>
-              </>
-            )}
-
-            {p.condicion_cronica && (
-              <>
-                <dt className="text-xs text-[#94A3B8]">Condición crónica</dt>
-                <dd className="text-[#0F172A]">{p.condicion_cronica}</dd>
-              </>
-            )}
-
-            {p.proximo_control && (
-              <>
-                <dt className="text-xs text-[#94A3B8]">Próximo control</dt>
-                <dd className="text-[#0F172A]">
-                  {new Date(p.proximo_control + "T00:00:00").toLocaleDateString(
-                    "es-EC",
-                    { day: "numeric", month: "long", year: "numeric" }
-                  )}
-                </dd>
-              </>
-            )}
-
-            <dt className="text-xs text-[#94A3B8]">Consentimiento LOPDP</dt>
-            <dd>
-              {p.consentimiento_datos_at ? (
-                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#065F46] bg-[#D1FAE5] rounded-full px-2 py-0.5">
-                  Otorgado {p.consentimiento_datos_version ?? ""} ·{" "}
-                  {new Date(p.consentimiento_datos_at).toLocaleDateString("es-EC", {
-                    timeZone: "America/Guayaquil",
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })}
-                </span>
-              ) : (
-                <span className="inline-flex items-center text-xs font-medium text-[#92400E] bg-[#FEF3C7] rounded-full px-2 py-0.5">
-                  No registrado
-                </span>
+              {c.resumen_corto && (
+                <p className="mt-1 text-base leading-6 text-[#1A1A18]">{c.resumen_corto}</p>
               )}
-            </dd>
-          </dl>
-        </div>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    );
 
-        <Link
-          href={`/consultas/nueva?paciente_id=${paciente.id}`}
-          className="w-full h-11 mb-3 bg-[#0F766E] text-white text-sm font-medium rounded-lg hover:bg-[#0F766E]/90 transition-colors inline-flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:ring-offset-2"
-        >
-          Nueva consulta
-        </Link>
-
-        <EditarPacienteModal
-          paciente={{
-            id: p.id,
-            nombre: p.nombre,
-            edad: p.edad ?? null,
-            sexo: p.sexo ?? null,
-            cedula: p.cedula ?? null,
-            fecha_nacimiento: p.fecha_nacimiento ?? null,
-            direccion: p.direccion ?? null,
-            telefono: p.telefono ?? null,
-            tipo_seguro: p.tipo_seguro ?? null,
-            alergias: p.alergias ?? null,
-            identificacion: p.identificacion,
-            tipo_identificacion: p.tipo_identificacion,
-            email: p.email,
-            condicion_cronica: p.condicion_cronica,
-            proximo_control: p.proximo_control,
-            consentimiento_datos_at: p.consentimiento_datos_at,
-          }}
-        />
-
-        <Link
-          href={`/pacientes/${paciente.id}/historia`}
-          className="w-full h-11 mt-2 border border-[#0F766E] text-[#0F766E] text-sm font-medium rounded-lg hover:bg-[#F0FDFB] transition-colors inline-flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:ring-offset-2"
-        >
-          Historia clínica completa
-        </Link>
-
-        <div className="mb-6" />
-
-        <h2 className="text-sm font-semibold text-[#374151] mb-3">
-          Historial de consultas
-        </h2>
-
-        {!consultas || consultas.length === 0 ? (
-          <div className="bg-white rounded-xl border border-[#E5E7EB] p-4 text-center">
-            <p className="text-sm text-[#64748B]">Sin consultas registradas.</p>
-          </div>
-        ) : (
-          <ul className="space-y-3">
-            {consultas.map((c) => (
-              <li key={c.id}>
-                <Link
-                  href={`/consultas/${c.id}`}
-                  className="bg-white rounded-xl border border-[#E5E7EB] p-4 block hover:border-[#0F766E] transition-colors focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50"
-                >
-                  <p className="text-xs font-medium text-[#0F766E]">
-                    {new Date(c.fecha).toLocaleDateString("es-EC", {
+  const reclamacionesNode =
+    !reclamaciones || reclamaciones.length === 0 ? (
+      <p className="text-sm text-[#8A8780]">Sin reclamaciones a aseguradoras.</p>
+    ) : (
+      <ul className="divide-y divide-[#E7E3DB]">
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+        {reclamaciones.map((r: any) => {
+          const estado = String(r.estado ?? "").toLowerCase();
+          const badge = RECLAMACION_BADGE[estado] ?? "bg-[#8A8780]/[0.14] text-[#5C5A54]";
+          return (
+            <li key={r.id}>
+              <Link
+                href={`/reclamaciones/${r.id}`}
+                className="block -mx-2 rounded-lg px-2 py-3.5 transition-colors hover:bg-[#F7F7F4]"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-base text-[#1A1A18]">
+                    {r.aseguradoras?.nombre ?? "Aseguradora"}
+                  </p>
+                  <span
+                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium uppercase tracking-wide ${badge}`}
+                  >
+                    {r.estado}
+                  </span>
+                </div>
+                {r.fecha_atencion && (
+                  <p className="mt-0.5 text-sm text-[#8A8780]">
+                    {new Date(r.fecha_atencion).toLocaleDateString("es-EC", {
+                      timeZone: "UTC",
                       day: "numeric",
                       month: "long",
                       year: "numeric",
                     })}
                   </p>
-                  {c.resumen_corto && (
-                    <p className="text-sm text-[#374151] mt-1">{c.resumen_corto}</p>
-                  )}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
+                )}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    );
 
-        <div className="mb-6" />
+  return (
+    <main className="min-h-screen bg-[#F7F7F4]">
+      <div className="mx-auto w-full max-w-5xl px-6 py-10">
+        <Link
+          href="/pacientes"
+          className="mb-8 inline-flex items-center gap-1.5 text-sm text-[#5C5A54] transition-colors hover:text-[#1A1A18]"
+        >
+          <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
+          Pacientes
+        </Link>
 
-        <h2 className="text-sm font-semibold text-[#374151] mb-3">
-          Reclamaciones a aseguradoras
-        </h2>
+        {/* ── Cabecera de identidad ── */}
+        <Reveal delay={0}>
+          <header>
+            <div className="flex items-baseline gap-3">
+              <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-[#1A1A18]">
+                {paciente.nombre}
+              </h1>
+              {paciente.numero_historia && (
+                <span className="font-mono text-sm text-[#8A8780]">
+                  {paciente.numero_historia}
+                </span>
+              )}
+            </div>
 
-        {!reclamaciones || reclamaciones.length === 0 ? (
-          <div className="bg-white rounded-xl border border-[#E5E7EB] p-4 text-center">
-            <p className="text-sm text-[#64748B]">Sin reclamaciones.</p>
-          </div>
-        ) : (
-          <ul className="space-y-3">
-            {reclamaciones.map((r: any) => (
-              <li key={r.id}>
-                <Link
-                  href={`/reclamaciones/${r.id}`}
-                  className="bg-white rounded-xl border border-[#E5E7EB] p-4 block hover:border-[#0F766E] transition-colors focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50"
+            {/* Ficha primaria escaneable */}
+            <div className="mt-5 flex flex-wrap items-center gap-x-7 gap-y-3 border-t border-[#E7E3DB] pt-5">
+              {edadDisplay != null && (
+                <Dato label="Edad" valor={`${edadDisplay} años`} />
+              )}
+              {sexoLabel && <Dato label="Sexo" valor={sexoLabel} />}
+              {seguroLabel && <Dato label="Seguro" valor={seguroLabel} />}
+              {paciente.telefono && <Dato label="Teléfono" valor={paciente.telefono} />}
+            </div>
+
+            {/* Datos secundarios */}
+            <dl className="mt-4 grid grid-cols-2 gap-x-7 gap-y-2.5 border-t border-[#E7E3DB] pt-4 sm:grid-cols-3">
+              {paciente.cedula && <DatoGrid label="Cédula / Pasaporte" valor={paciente.cedula} />}
+              {fechaNacimientoDisplay && (
+                <DatoGrid label="Fecha de nacimiento" valor={fechaNacimientoDisplay} />
+              )}
+              {paciente.direccion && <DatoGrid label="Dirección" valor={paciente.direccion} />}
+              {p.condicion_cronica && (
+                <DatoGrid label="Condición crónica" valor={p.condicion_cronica} />
+              )}
+              {p.proximo_control && (
+                <DatoGrid
+                  label="Próximo control"
+                  valor={new Date(p.proximo_control + "T00:00:00").toLocaleDateString("es-EC", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                />
+              )}
+              <div>
+                <dt className={EYEBROW}>Consentimiento LOPDP</dt>
+                <dd
+                  className={`mt-1 text-sm ${
+                    consentimientoLabel ? "text-[#3F7A5E]" : "text-[#A8A49C]"
+                  }`}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium text-[#0F172A]">
-                      {r.aseguradoras?.nombre ?? "Aseguradora"}
-                    </p>
-                    <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[#F1F5F9] text-[#475569] uppercase tracking-wide">
-                      {r.estado}
-                    </span>
-                  </div>
-                  {r.fecha_atencion && (
-                    <p className="text-xs text-[#0F766E] mt-1">
-                      {new Date(r.fecha_atencion).toLocaleDateString("es-EC", {
-                        timeZone: "UTC",
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                      })}
-                    </p>
-                  )}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
+                  {consentimientoLabel ?? "No registrado"}
+                </dd>
+              </div>
+            </dl>
 
-        <div className="mb-6" />
+            {/* Alergias — sobrio, sin caja roja */}
+            <div className="mt-4 border-t border-[#E7E3DB] pt-4">
+              <p className={EYEBROW}>Alergias</p>
+              {paciente.alergias ? (
+                <p className="mt-1 flex items-center gap-2 text-base text-[#1A1A18]">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-[#9A6B12]" strokeWidth={1.75} />
+                  {paciente.alergias}
+                </p>
+              ) : (
+                <p className="mt-1 text-sm text-[#A8A49C]">Sin alergias registradas.</p>
+              )}
+            </div>
+          </header>
+        </Reveal>
 
-        <ComunicacionesSection pacienteId={paciente.id} />
+        {/* ── Acciones ── */}
+        <Reveal delay={70}>
+          <div className="mt-7 flex flex-wrap items-center gap-3">
+            <Link
+              href={`/consultas/nueva?paciente_id=${paciente.id}`}
+              className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#0F766E] px-5 text-sm font-medium text-white transition hover:brightness-95"
+            >
+              <Plus className="h-4 w-4" strokeWidth={1.75} />
+              Nueva consulta
+            </Link>
+            <Link
+              href={`/pacientes/${paciente.id}/historia`}
+              className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#E7E3DB] px-4 text-sm font-medium text-[#5C5A54] transition-colors hover:bg-[#F7F7F4] hover:text-[#1A1A18]"
+            >
+              <FileText className="h-4 w-4" strokeWidth={1.75} />
+              Historia clínica
+            </Link>
+            <div className="flex-1" />
+            <EditarPacienteModal
+              paciente={{
+                id: p.id,
+                nombre: p.nombre,
+                edad: p.edad ?? null,
+                sexo: p.sexo ?? null,
+                cedula: p.cedula ?? null,
+                fecha_nacimiento: p.fecha_nacimiento ?? null,
+                direccion: p.direccion ?? null,
+                telefono: p.telefono ?? null,
+                tipo_seguro: p.tipo_seguro ?? null,
+                alergias: p.alergias ?? null,
+                identificacion: p.identificacion,
+                tipo_identificacion: p.tipo_identificacion,
+                email: p.email,
+                condicion_cronica: p.condicion_cronica,
+                proximo_control: p.proximo_control,
+                consentimiento_datos_at: p.consentimiento_datos_at,
+              }}
+            />
+          </div>
+        </Reveal>
+
+        {/* ── Tabs ── */}
+        <Reveal delay={140} className="mt-9">
+          <PacienteTabs
+            historial={historial}
+            reclamaciones={reclamacionesNode}
+            comunicaciones={<ComunicacionesSection pacienteId={paciente.id} />}
+          />
+        </Reveal>
       </div>
     </main>
+  );
+}
+
+function Dato({ label, valor }: { label: string; valor: string }) {
+  return (
+    <div className="flex items-baseline gap-2">
+      <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-[#8A8780]">
+        {label}
+      </span>
+      <span className="text-sm text-[#1A1A18]">{valor}</span>
+    </div>
+  );
+}
+
+function DatoGrid({ label, valor }: { label: string; valor: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-[#8A8780]">
+        {label}
+      </dt>
+      <dd className="mt-0.5 text-sm text-[#1A1A18]">{valor}</dd>
+    </div>
   );
 }

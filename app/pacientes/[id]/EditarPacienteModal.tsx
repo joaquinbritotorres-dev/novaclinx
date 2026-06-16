@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import SegurosFormSection, {
   type SegurosState,
@@ -151,27 +152,36 @@ export default function EditarPacienteModal({
     "w-full h-11 px-3 rounded-lg border border-gray-300 text-sm text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:bg-gray-100";
   const labelClass = "block text-xs font-medium text-[#374151] mb-1";
 
+  // Los modales se montan vía portal a document.body para escapar de cualquier
+  // ancestro con transform (p. ej. el componente Reveal), que de lo contrario
+  // atrapa el `position: fixed` y deja el backdrop sin cubrir la página.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   return (
     <>
       {/* Trigger buttons */}
-      <div className="flex gap-2 mt-2">
+      <div className="flex items-center gap-3">
         <button
           onClick={() => { setEditOpen(true); setErrorMsg(null); }}
-          className="flex-1 h-11 border border-[#0F766E] text-[#0F766E] text-sm font-medium rounded-lg hover:bg-[#F0FDFB] transition-colors focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:ring-offset-2"
+          className="inline-flex h-10 items-center justify-center rounded-lg border border-[#E7E3DB] px-4 text-sm font-medium text-[#5C5A54] transition-colors hover:bg-[#F7F7F4] hover:text-[#1A1A18] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/40 focus:ring-offset-2"
         >
           Editar paciente
         </button>
         <button
           onClick={() => { setDeleteOpen(true); setErrorMsg(null); }}
-          className="h-11 px-4 border border-red-300 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition-colors focus:outline-none focus:ring-2 focus:ring-red-300/50 focus:ring-offset-2"
+          className="inline-flex h-10 items-center justify-center rounded-lg px-3 text-sm font-medium text-[#B91C1C] transition-colors hover:bg-[#FBEAE9] focus:outline-none focus:ring-2 focus:ring-[#B91C1C]/30 focus:ring-offset-2"
         >
           Eliminar
         </button>
       </div>
 
-      {/* Edit modal */}
-      {editOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-4 pb-4 sm:pb-0">
+      {/* Edit modal — portal a body para escapar de ancestros con transform */}
+      {mounted && editOpen && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#1A1A18]/40 px-4 pb-4 sm:pb-0"
+          onClick={(e) => { if (e.target === e.currentTarget) setEditOpen(false); }}
+        >
           <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden">
             <div className="px-5 py-4 border-b border-[#E5E7EB] flex items-center justify-between">
               <h2 className="text-base font-semibold text-[#0F172A]">Editar paciente</h2>
@@ -400,12 +410,16 @@ export default function EditarPacienteModal({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* Delete confirmation modal */}
-      {deleteOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-4 pb-4 sm:pb-0">
+      {/* Delete confirmation modal — mismo patrón portal + backdrop sólido */}
+      {mounted && deleteOpen && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#1A1A18]/40 px-4 pb-4 sm:pb-0"
+          onClick={(e) => { if (e.target === e.currentTarget && !isLoading) setDeleteOpen(false); }}
+        >
           <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-6">
             <h2 className="text-base font-semibold text-[#0F172A] mb-2">
               Eliminar paciente
@@ -438,7 +452,8 @@ export default function EditarPacienteModal({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
