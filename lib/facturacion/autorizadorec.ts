@@ -176,3 +176,73 @@ export async function autorizadorecRequest<T>(params: {
 
   return (await res.json()) as T;
 }
+
+// ── PIEZA 1: crear empresa (gestión, auth "account") ───────────────────
+
+/**
+ * Plan de facturación a usar al crear empresas: 6 = "Bajo Demanda"
+ * (payperuse), el plan actual de la cuenta Novaclinx en AutorizadorEC.
+ */
+const PLAN_ID_DEFAULT = 6;
+
+/** Parámetros de negocio para dar de alta a un médico como empresa emisora. */
+export interface CrearEmpresaParams {
+  razonSocial: string;
+  ruc: string;
+  direccion: string;
+  email: string;
+  telefono?: string;
+  establecimiento?: string; // default "001"
+  ambiente?: "test" | "production"; // default "test"
+  notificationEmail?: string;
+}
+
+/** Respuesta de AutorizadorEC al crear una empresa. */
+export interface EmpresaCreada {
+  id: number; // ID de la empresa en AutorizadorEC (= provider_company_id)
+  accountId: number;
+  name: string;
+  ruc: string;
+  apiKey: string; // sk_ — sensible; el caller lo guardará en el Vault
+  env: string;
+  status: string;
+  establishment: string;
+  billingStartDate?: string;
+}
+
+/**
+ * Crea una empresa emisora en AutorizadorEC (POST /client/companies).
+ * Usa auth "account" (el ak_ de la plataforma) porque es gestión.
+ *
+ * ⚠ La respuesta incluye `apiKey` (sk_), sensible. Esta función NO lo loguea
+ * ni lo persiste: solo lo devuelve para que el caller lo guarde en el Vault.
+ */
+export async function crearEmpresa(
+  params: CrearEmpresaParams
+): Promise<EmpresaCreada> {
+  const body = {
+    planId: PLAN_ID_DEFAULT,
+    name: params.razonSocial,
+    ruc: params.ruc,
+    address: params.direccion,
+    email: params.email,
+    phone: params.telefono,
+    env: params.ambiente ?? "test",
+    establishment: params.establecimiento ?? "001",
+    notificationEmail: params.notificationEmail,
+  };
+
+  const empresa = await autorizadorecRequest<EmpresaCreada>({
+    path: "/client/companies",
+    method: "POST",
+    auth: { type: "account" },
+    body,
+  });
+
+  // Log de éxito sin credenciales: solo id y ruc, jamás el apiKey.
+  console.log(
+    `[facturacion/autorizadorec] empresa creada id=${empresa.id} ruc=${empresa.ruc}`
+  );
+
+  return empresa;
+}
