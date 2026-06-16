@@ -286,18 +286,22 @@ function describirPrimerError(errores: unknown[]): string | null {
 }
 
 /**
- * Descarga el XML autorizado y lo sube al bucket 'facturas-xml'. Best-effort:
- * si el XML aún no está disponible (404) o algo falla, NO rompe la factura ya
- * autorizada; quedará para sincronizar después.
+ * Descarga el XML autorizado y lo sube al bucket 'facturas-xml' en la ruta
+ * `${medicoId}/${claveAcceso}.xml`. Devuelve el object key, o null si el XML
+ * aún no está disponible (404) o algo falla. Best-effort: NUNCA lanza, para no
+ * romper una factura ya autorizada. NO actualiza la fila (eso lo hace el caller).
+ *
+ * Reutilizada por facturarConsulta y por el job sincronizarFacturas.
+ *
+ * ⚠ SEGURIDAD: nunca se loguea el sk_.
  */
-async function respaldarXml(args: {
+export async function respaldarXmlAutorizado(args: {
   supabase: ReturnType<typeof createSupabaseServiceRoleClient>;
   sk: string;
   medicoId: string;
   claveAcceso: string;
-  facturaId: string;
-}): Promise<void> {
-  const { supabase, sk, medicoId, claveAcceso, facturaId } = args;
+}): Promise<string | null> {
+  const { supabase, sk, medicoId, claveAcceso } = args;
   try {
     const xml = await descargarArchivoDocumento({
       sk,
@@ -306,22 +310,39 @@ async function respaldarXml(args: {
     });
     if (!xml) {
       console.log(
-        `[facturar-consulta] XML aún no disponible factura=${facturaId}; se sincronizará después.`
+        `[facturacion] XML aún no disponible clave=${claveAcceso}; se sincronizará después.`
       );
-      return;
+      return null;
     }
     const path = `${medicoId}/${claveAcceso}.xml`;
     const { error: upErr } = await supabase.storage
       .from("facturas-xml")
       .upload(path, xml, { contentType: "application/xml", upsert: true });
     if (upErr) {
-      console.error(`[facturar-consulta] no se pudo subir XML factura=${facturaId}: ${upErr.message}`);
-      return;
+      console.error(`[facturacion] no se pudo subir XML clave=${claveAcceso}: ${upErr.message}`);
+      return null;
     }
-    await supabase.from("facturas").update({ xml_object_key: path }).eq("id", facturaId);
+    return path;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[facturar-consulta] respaldo XML falló factura=${facturaId}: ${message}`);
-    // No relanzar: la factura ya está autorizada.
+    console.error(`[facturacion] respaldo XML falló clave=${claveAcceso}: ${message}`);
+    return null; // no relanzar: la factura ya está autorizada
+  }
+}
+
+/**
+ * Wrapper para facturarConsulta: respalda el XML y actualiza xml_object_key.
+ */
+async function respaldarXml(args: {
+  supabase: ReturnType<typeof createSupabaseServiceRoleClient>;
+  sk: string;
+  medicoId: string;
+  claveAcceso: string;
+  facturaId: string;
+}): Promise<void> {
+  const { supabase, facturaId, ...rest } = args;
+  const path = await respaldarXmlAutorizado({ supabase, ...rest });
+  if (path) {
+    await supabase.from("facturas").update({ xml_object_key: path }).eq("id", facturaId);
   }
 }

@@ -618,3 +618,63 @@ export async function descargarArchivoDocumento(params: {
   const arrayBuffer = await res.arrayBuffer();
   return Buffer.from(arrayBuffer);
 }
+
+// ── Consultar estado de un documento — JSON, auth "company" ────────────
+
+/** Estado de un documento devuelto por GET /documents/... */
+export interface DocumentoEstado {
+  id?: number;
+  estado: string; // AUTHORIZED / REJECTED / PROCESSING / FAILED / RECEIVED / …
+  claveAcceso?: string;
+  secuencial?: string;
+  numeroAutorizacion?: string;
+  fechaAutorizacion?: string;
+  errores?: unknown[];
+  // La API puede incluir más campos; no los tipamos estrictamente.
+  [key: string]: unknown;
+}
+
+/**
+ * Consulta un documento por su clave de acceso (GET /documents/{claveAcceso}).
+ * Devuelve null si la API responde 404 (no existe). Auth company.
+ *
+ * ⚠ SEGURIDAD: nunca se loguea el sk_.
+ */
+export async function consultarDocumento(params: {
+  sk: string;
+  claveAcceso: string;
+}): Promise<DocumentoEstado | null> {
+  try {
+    return await autorizadorecRequest<DocumentoEstado>({
+      path: `/documents/${encodeURIComponent(params.claveAcceso)}`,
+      method: "GET",
+      auth: { type: "company", sk: params.sk },
+    });
+  } catch (err) {
+    if (err instanceof AutorizadorECError && err.statusCode === 404) return null;
+    throw err;
+  }
+}
+
+/**
+ * Consulta un documento por su idempotencyKey (GET
+ * /documents/by-idempotency-key/{key}). Útil cuando el emit hizo timeout sin
+ * devolver la claveAcceso. Devuelve null si la API responde 404. Auth company.
+ *
+ * ⚠ SEGURIDAD: nunca se loguea el sk_.
+ */
+export async function consultarDocumentoPorIdempotencyKey(params: {
+  sk: string;
+  idempotencyKey: string;
+}): Promise<DocumentoEstado | null> {
+  try {
+    return await autorizadorecRequest<DocumentoEstado>({
+      path: `/documents/by-idempotency-key/${encodeURIComponent(params.idempotencyKey)}`,
+      method: "GET",
+      auth: { type: "company", sk: params.sk },
+    });
+  } catch (err) {
+    if (err instanceof AutorizadorECError && err.statusCode === 404) return null;
+    throw err;
+  }
+}
