@@ -1,5 +1,5 @@
-"use client";
-
+// Server Component: solo renderiza datos (filter/map) y delega la interacción
+// al hijo cliente <BotonWhatsApp>. No envía JS propio al navegador.
 import Link from "next/link";
 import BotonWhatsApp from "@/components/BotonWhatsApp";
 
