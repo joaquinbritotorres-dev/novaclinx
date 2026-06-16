@@ -521,3 +521,100 @@ export async function crearPuntoEmision(params: {
 
   return punto;
 }
+
+// ── Listar empresas — JSON, auth "account" ─────────────────────────────
+
+/** Empresa tal como la devuelve GET /client/companies. */
+export interface EmpresaAutorizadorEC {
+  id: number;
+  ruc: string;
+  name: string;
+  env: string;
+  status: string;
+  apiKey: string; // sk_ — sensible; nunca loguear
+  docTypes?: TipoDocumentoHabilitado[];
+  emissionPoints?: PuntoEmision[];
+  certificates?: CertificadoSubido["certificate"][];
+  // La API puede incluir más campos; no los tipamos estrictamente.
+  [key: string]: unknown;
+}
+
+/**
+ * Lista las empresas de la cuenta (GET /client/companies, auth account).
+ *
+ * ⚠ Cada empresa incluye `apiKey` (sk_), sensible: no loguear la respuesta.
+ */
+export async function listarEmpresas(): Promise<EmpresaAutorizadorEC[]> {
+  return autorizadorecRequest<EmpresaAutorizadorEC[]>({
+    path: "/client/companies",
+    method: "GET",
+    auth: { type: "account" },
+  });
+}
+
+// ── Descargar archivos de un documento (binario) — auth "company" ──────
+
+/**
+ * Descarga un archivo de un documento emitido (GET
+ * /documents/{claveAcceso}/files/{fileType}). La respuesta es BINARIA, no JSON,
+ * por eso NO usa autorizadorecRequest (que siempre hace res.json()): hace fetch
+ * directo reusando la base URL y el header X-API-Key.
+ *
+ * - 200 → Buffer con el archivo.
+ * - 404 → null (el archivo aún no existe; no es error).
+ * - otro status → AutorizadorECError.
+ *
+ * ⚠ SEGURIDAD: nunca se loguea el sk_.
+ */
+export async function descargarArchivoDocumento(params: {
+  sk: string;
+  claveAcceso: string;
+  fileType: "signed_xml" | "authorized_xml" | "ride";
+}): Promise<Buffer | null> {
+  const path = `/documents/${params.claveAcceso}/files/${params.fileType}`;
+  const url = `${AUTORIZADOREC_BASE_URL}${path}`;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "GET",
+      headers: { "X-API-Key": params.sk }, // jamás se loguea
+      signal: controller.signal,
+    });
+  } catch (err) {
+    const aborted = err instanceof Error && err.name === "AbortError";
+    const message = aborted
+      ? `Timeout al descargar ${params.fileType} de AutorizadorEC.`
+      : "Error de red al descargar archivo de AutorizadorEC.";
+    console.error(`[facturacion/autorizadorec] GET ${path}: ${message}`);
+    throw new AutorizadorECError(message, 0);
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  // 404: el archivo aún no existe (p. ej. authorized_xml antes de autorizar).
+  if (res.status === 404) {
+    return null;
+  }
+
+  if (!res.ok) {
+    let apiError: AutorizadorECApiError | undefined;
+    try {
+      apiError = (await res.json()) as AutorizadorECApiError;
+    } catch {
+      // Cuerpo no JSON; fallback con el status real.
+    }
+    const statusCode = apiError?.statusCode ?? res.status;
+    const message =
+      apiError?.message ??
+      `AutorizadorEC respondió ${res.status} ${res.statusText} al descargar ${params.fileType}.`;
+    console.error(`[facturacion/autorizadorec] GET ${path} → ${statusCode}: ${message}`);
+    throw new AutorizadorECError(message, statusCode, apiError);
+  }
+
+  const arrayBuffer = await res.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
