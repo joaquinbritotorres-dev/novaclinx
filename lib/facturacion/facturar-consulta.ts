@@ -21,10 +21,25 @@ import { createSupabaseServiceRoleClient } from "@/lib/supabase/service-role";
  * nunca se pierde.
  */
 
+/**
+ * Error de negocio: la consulta NO se puede facturar (ej. el paciente no tiene
+ * una identificación válida — no se factura a Consumidor Final). El endpoint lo
+ * captura y lo traduce a HTTP 422 con un mensaje claro para el médico.
+ */
+export class FacturacionBloqueadaError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "FacturacionBloqueadaError";
+  }
+}
+
 export interface FacturarConsultaParams {
   consultaId: string;
   monto: number; // el médico lo escribe
   descripcionServicio?: string; // default "Consulta médica"
+  /** Defensa en profundidad: si se pasa, debe coincidir con el medico_id de la
+   *  consulta (el endpoint ya verificó al dueño con el cliente SSR). */
+  medicoIdEsperado?: string;
 }
 
 export interface FacturarConsultaResultado {
@@ -68,12 +83,6 @@ interface Comprador {
   email?: string;
 }
 
-const CONSUMIDOR_FINAL: Comprador = {
-  tipoIdentificacion: "07",
-  identificacion: "9999999999999",
-  razonSocial: "CONSUMIDOR FINAL",
-};
-
 export async function facturarConsulta(
   params: FacturarConsultaParams
 ): Promise<FacturarConsultaResultado> {
@@ -95,6 +104,11 @@ export async function facturarConsulta(
   const medicoId: string = consulta.medico_id;
   const pacienteId: string | null = consulta.paciente_id;
 
+  // Defensa en profundidad: la consulta debe ser del médico esperado.
+  if (params.medicoIdEsperado && params.medicoIdEsperado !== medicoId) {
+    throw new Error("La consulta no pertenece al médico indicado.");
+  }
+
   // ── 2) Config de facturación del médico (debe estar activa) ─────────
   const { data: config } = await supabase
     .from("config_facturacion")
@@ -113,30 +127,37 @@ export async function facturarConsulta(
     throw new Error("No se encontró la credencial de facturación del médico.");
   }
 
-  // ── 4) Comprador (paciente o consumidor final) ──────────────────────
-  let comprador: Comprador = CONSUMIDOR_FINAL;
-  if (pacienteId) {
-    const { data: paciente } = await supabase
-      .from("pacientes")
-      .select("nombre, identificacion, tipo_identificacion, direccion, email")
-      .eq("id", pacienteId)
-      .maybeSingle();
-
-    const ident = (paciente?.identificacion ?? "").trim();
-    if (paciente && ident) {
-      const tipo = normalizarTipoIdent(paciente.tipo_identificacion, ident);
-      if (tipo) {
-        comprador = {
-          tipoIdentificacion: tipo,
-          identificacion: ident,
-          razonSocial: paciente.nombre ?? "CONSUMIDOR FINAL",
-          direccion: paciente.direccion ?? undefined,
-          email: paciente.email ?? undefined,
-        };
-      }
-      // Si el tipo no es decidible, se deja Consumidor Final (fallback seguro).
-    }
+  // ── 4) Comprador: paciente con identificación VÁLIDA ────────────────
+  // Regla de negocio: NO se factura a Consumidor Final (07) ni sin
+  // identificación. Una factura a Consumidor Final no le sirve al paciente para
+  // reembolso de seguro/impuestos y desde 2026 es irreversible ante el SRI.
+  // Se bloquea ANTES de insertar la fila o emitir (no deja registro ni emite).
+  if (!pacienteId) {
+    throw new FacturacionBloqueadaError(
+      "La consulta no tiene un paciente asociado. Regístralo con su identificación antes de facturar."
+    );
   }
+  const { data: paciente } = await supabase
+    .from("pacientes")
+    .select("nombre, identificacion, tipo_identificacion, direccion, email")
+    .eq("id", pacienteId)
+    .maybeSingle();
+
+  const ident = (paciente?.identificacion ?? "").trim();
+  const tipo =
+    paciente && ident ? normalizarTipoIdent(paciente.tipo_identificacion, ident) : null;
+  if (!paciente || !ident || !tipo || tipo === "07") {
+    throw new FacturacionBloqueadaError(
+      "El paciente no tiene una identificación válida (cédula, RUC o pasaporte). Edítalo antes de facturar."
+    );
+  }
+  const comprador: Comprador = {
+    tipoIdentificacion: tipo,
+    identificacion: ident,
+    razonSocial: paciente.nombre ?? "",
+    direccion: paciente.direccion ?? undefined,
+    email: paciente.email ?? undefined,
+  };
 
   // ── 5) idempotencyKey ───────────────────────────────────────────────
   const idempotencyKey = `nvclx-${params.consultaId}-${Date.now()}`;

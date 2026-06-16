@@ -3,113 +3,89 @@ import "server-only";
 import { type NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-guard";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { emitirFacturaDatil } from "@/lib/datil/emitir-factura";
 import {
-  validarConfigDatil,
-  getDatilAmbiente,
-  getDatilEmisor,
-} from "@/lib/datil/config";
-import type {
-  DatilFacturaRequest,
-  DatilItem,
-  DatilTotales,
-  DatilImpuesto,
-} from "@/lib/datil/types";
+  facturarConsulta,
+  FacturacionBloqueadaError,
+} from "@/lib/facturacion/facturar-consulta";
+
+// Estados de factura que BLOQUEAN un nuevo intento (ya facturada / en curso).
+// 'rechazada'/'fallida' NO bloquean: se permite reintentar.
+const ESTADOS_BLOQUEANTES = new Set(["autorizada", "procesando", "pendiente"]);
 
 export async function POST(request: NextRequest) {
+  // 1) Autenticación.
   const { user, errorResponse } = await requireAuth(request);
   if (errorResponse) {
     return errorResponse;
   }
 
+  // 2) Body + validaciones (mensajes genéricos al usuario; detalle a logs).
   let body: unknown;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "No pudimos completar la acción. Intenta de nuevo." }, { status: 400 });
   }
-
   if (typeof body !== "object" || body === null) {
     return NextResponse.json({ error: "No pudimos completar la acción. Intenta de nuevo." }, { status: 400 });
   }
 
   const { consulta_id, monto } = body as Record<string, unknown>;
-
   if (typeof consulta_id !== "string" || !consulta_id.trim()) {
     return NextResponse.json({ error: "No pudimos completar la acción. Intenta de nuevo." }, { status: 400 });
   }
-
   const montoNum = typeof monto === "number" ? monto : parseFloat(String(monto));
   if (isNaN(montoNum) || montoNum <= 0 || montoNum > 9999) {
     return NextResponse.json({ error: "Monto inválido. Debe ser entre $0.01 y $9,999." }, { status: 400 });
   }
 
-  // Fail-fast: sin configuración completa de Dátil no se emite nada.
-  // El detalle exacto va a logs; al usuario solo mensaje genérico.
-  const configFaltante = validarConfigDatil();
-  if (configFaltante.length > 0) {
-    console.error(
-      `[facturas/emitir] Configuración Dátil incompleta. Variables faltantes o inválidas: ${configFaltante.join(", ")}`
-    );
-    return NextResponse.json(
-      { error: "La facturación no está disponible en este momento. Contacta a soporte." },
-      { status: 500 }
-    );
-  }
-
   try {
+    // Cliente SSR con RLS: auth + verificación de dueño. (El trabajo técnico de
+    // emitir/escribir en facturas lo hace facturarConsulta con service-role.)
     const supabase = await createSupabaseServerClient();
 
+    // 3) Médico del usuario.
     const { data: medico } = await supabase
       .from("medicos")
       .select("id")
       .eq("user_id", user.id)
       .maybeSingle();
-
     if (!medico) {
       return NextResponse.json({ error: "No autorizado." }, { status: 403 });
     }
 
+    // 4) Consulta del médico (dueño) + paciente.
     const { data: consulta } = await supabase
       .from("consultas")
       .select(`
         id,
         paciente_id,
         pacientes (
-          id,
-          nombre,
           identificacion,
-          tipo_identificacion,
-          email,
-          direccion
+          tipo_identificacion
         )
       `)
       .eq("id", consulta_id)
       .eq("medico_id", medico.id)
       .maybeSingle();
-
     if (!consulta) {
       return NextResponse.json({ error: "No pudimos completar la acción. Intenta de nuevo." }, { status: 404 });
     }
 
     const paciente = consulta.pacientes as unknown as {
-      nombre: string;
       identificacion: string | null;
       tipo_identificacion: "04" | "05" | "06" | "07" | null;
-      email: string | null;
-      direccion: string | null;
-    };
+    } | null;
 
-    if (!paciente.identificacion || !paciente.tipo_identificacion) {
+    // 5) REGLA DE LA CÉDULA — fallar rápido con mensaje claro.
+    if (!paciente || !paciente.identificacion || !paciente.tipo_identificacion) {
       return NextResponse.json(
         { error: "El paciente no tiene cédula o RUC registrado. Edítalo antes de facturar." },
         { status: 422 }
       );
     }
-
-    // "Consumidor final" (07) no es facturable: impide el reembolso del
-    // paciente ante su aseguradora y desde 2026 es irreversible ante el SRI.
-    // Guarda para datos preexistentes; la opción ya no existe en formularios.
+    // "Consumidor final" (07) no es facturable: impide el reembolso del paciente
+    // ante su aseguradora y desde 2026 es irreversible ante el SRI.
     if (paciente.tipo_identificacion === "07") {
       return NextResponse.json(
         {
@@ -120,170 +96,54 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Idempotencia: una consulta solo puede tener UNA factura (UNIQUE en DB).
-    // Si existe en estado activo → 409. Si existe en error → se reusa la fila
-    // y su secuencial en el reintento (sin chocar el UNIQUE, sin huecos).
-    const { data: facturaExistente } = await supabase
+    // 6) ANTI-DUPLICADOS. Puede haber varias filas por consulta (reintentos):
+    // si ALGUNA está en estado bloqueante → 409. Si solo hay rechazada/fallida
+    // (o ninguna) → se permite continuar.
+    const { data: facturasPrevias } = await supabase
       .from("facturas")
-      .select("id, estado, secuencial")
-      .eq("consulta_id", consulta_id)
-      .maybeSingle();
+      .select("estado")
+      .eq("consulta_id", consulta_id);
 
-    if (facturaExistente && facturaExistente.estado !== "error") {
+    const bloqueada = (facturasPrevias ?? []).some((f) =>
+      ESTADOS_BLOQUEANTES.has(f.estado)
+    );
+    if (bloqueada) {
       return NextResponse.json(
         { error: "Esta consulta ya fue facturada o está en proceso." },
         { status: 409 }
       );
     }
 
-    // Secuencial: del reintento si la fila en error ya tenía uno; si no,
-    // contador atómico por médico (RPC con row-lock, a prueba de carreras).
-    let secuencial: number;
-    if (facturaExistente?.secuencial != null) {
-      secuencial = Number(facturaExistente.secuencial);
-    } else {
-      const { data: sec, error: rpcError } = await supabase.rpc(
-        "siguiente_secuencial_factura",
-        { p_medico_id: medico.id }
-      );
-      if (rpcError || sec == null) {
-        console.error(
-          `[facturas/emitir] siguiente_secuencial_factura falló para medico ${medico.id}: ${rpcError?.message ?? "devolvió null"}`
-        );
-        return NextResponse.json(
-          { error: "No pudimos completar la acción. Intenta de nuevo." },
-          { status: 500 }
-        );
-      }
-      secuencial = Number(sec);
+    // 7) Emitir vía el motor nuevo (verifica de nuevo el dueño con medicoIdEsperado).
+    const resultado = await facturarConsulta({
+      consultaId: consulta_id,
+      monto: montoNum,
+      medicoIdEsperado: medico.id,
+    });
+
+    // 8) Mapear estado → status HTTP.
+    const payload = {
+      facturaId: resultado.facturaId,
+      estado: resultado.estado,
+      claveAcceso: resultado.claveAcceso,
+      mensaje: resultado.mensaje,
+    };
+    if (resultado.estado === "autorizada") {
+      return NextResponse.json(payload, { status: 201 });
     }
-
-    // Registro PENDIENTE para tracking (antes de llamar a Dátil):
-    // reusa la fila en error si existe, si no inserta una nueva.
-    let factura: { id: string } | null = null;
-    if (facturaExistente) {
-      const { error: reuseError } = await supabase
-        .from("facturas")
-        .update({
-          estado: "pendiente",
-          monto: montoNum,
-          secuencial,
-          error_mensaje: null,
-        })
-        .eq("id", facturaExistente.id)
-        .eq("medico_id", medico.id);
-      if (!reuseError) factura = { id: facturaExistente.id };
-    } else {
-      const { data: nueva, error: insertError } = await supabase
-        .from("facturas")
-        .insert({
-          consulta_id,
-          medico_id: medico.id,
-          estado: "pendiente",
-          monto: montoNum,
-          secuencial,
-        })
-        .select("id")
-        .single();
-      if (!insertError) factura = nueva;
+    if (resultado.estado === "procesando") {
+      return NextResponse.json(payload, { status: 202 });
     }
-
-    if (!factura) {
-      return NextResponse.json({ error: "No pudimos completar la acción. Intenta de nuevo." }, { status: 500 });
+    // 'rechazada' (u otro): operación procesada, resultado no exitoso. 200 con
+    // el detalle; el front distingue por `estado`/`mensaje`.
+    return NextResponse.json(payload, { status: 200 });
+  } catch (err) {
+    // Error de negocio (paciente sin identificación válida que se coló) → 422.
+    if (err instanceof FacturacionBloqueadaError) {
+      return NextResponse.json({ error: err.message }, { status: 422 });
     }
-
-    // IVA tarifa 0% — servicios de salud (Art. 56 num. 2, Ley de Régimen
-    // Tributario Interno). El desglose "SUBTOTAL 0%" debe constar en el RIDE,
-    // por eso base_imponible lleva el monto y codigo_porcentaje es "0".
-    const base = Number(montoNum.toFixed(2));
-    const ivaValor = 0;
-    const total = base;
-
-    // tarifa solo va en items, no en totales (Dátil rechaza tarifa en totales)
-    const impuestoItem: DatilImpuesto = {
-      codigo: "2",
-      codigo_porcentaje: "0", // IVA 0% (Tabla 17 SRI)
-      base_imponible: base,
-      tarifa: 0,
-      valor: ivaValor,
-    };
-
-    const impuestoTotal: Omit<DatilImpuesto, "tarifa"> = {
-      codigo: "2",
-      codigo_porcentaje: "0",
-      base_imponible: base,
-      valor: ivaValor,
-    };
-
-    const item: DatilItem = {
-      codigo_principal: "CONSULTA",
-      descripcion: "Consulta médica",
-      cantidad: 1,
-      precio_unitario: base,
-      descuento: 0,
-      precio_total_sin_impuestos: base,
-      impuestos: [impuestoItem],
-    };
-
-    const totales: DatilTotales = {
-      total_sin_impuestos: base,
-      descuento: 0,
-      propina: 0,
-      importe_total: total,
-      impuestos: [impuestoTotal as DatilImpuesto],
-    };
-
-    const payload: DatilFacturaRequest = {
-      ambiente: getDatilAmbiente(),
-      tipo_emision: 1,
-      secuencial,
-      fecha_emision: new Date().toLocaleDateString("en-CA", { timeZone: "America/Guayaquil" }),
-      moneda: "USD",
-      emisor: getDatilEmisor(),
-      comprador: {
-        identificacion: paciente.identificacion,
-        tipo_identificacion: paciente.tipo_identificacion,
-        razon_social: paciente.nombre,
-        email: paciente.email ?? "",
-        direccion: paciente.direccion ?? "Ecuador",
-      },
-      items: [item],
-      totales,
-      pagos: [{ medio: "efectivo", total }],
-    };
-
-    const result = await emitirFacturaDatil(payload, factura.id);
-
-    if (result.ok) {
-      const estadoRaw = typeof result.data.estado === "string" ? result.data.estado : "";
-      const estadoFinal = estadoRaw.toUpperCase() === "AUTORIZADO" ? "autorizada" : "emitida";
-
-      const { error: updateError } = await supabase
-        .from("facturas")
-        .update({
-          estado: estadoFinal,
-          datil_id: result.data.id ?? null,
-          clave_acceso: result.data.clave_acceso ?? null,
-          numero: result.data.numero ?? null,
-        })
-        .eq("id", factura.id);
-
-      return NextResponse.json(
-        { id: result.data.id, estado: estadoFinal },
-        { status: 201 }
-      );
-    } else {
-      await supabase
-        .from("facturas")
-        .update({ estado: "error", error_mensaje: result.message })
-        .eq("id", factura.id);
-
-      return NextResponse.json(
-        { error: "No pudimos completar la acción. Intenta de nuevo." },
-        { status: result.status }
-      );
-    }
-  } catch {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[facturas/emitir] error al facturar consulta: ${message}`);
     return NextResponse.json(
       { error: "No pudimos completar la acción. Intenta de nuevo." },
       { status: 500 }
