@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   CalendarDays,
@@ -41,18 +42,14 @@ export default function Sidebar() {
         className="group mb-6 flex items-center gap-2.5 px-2"
         aria-label="Novaclinx — Inicio"
       >
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#0F766E] transition-colors group-hover:bg-[#0D6560]">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
-            <path
-              d="M2 11 L5.5 4 L7 7.5 L8.5 5.5 L12 11"
-              stroke="white"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </span>
-        <span className="text-sm font-semibold tracking-tight text-[#1A1A18]">
+        <Image
+          src="/novaclinx-logo.png"
+          alt="Novaclinx"
+          width={30}
+          height={30}
+          className="shrink-0 rounded-lg"
+        />
+        <span className="text-lg font-semibold tracking-tight text-[#1A1A18] font-[family-name:var(--font-brand)]">
           Novaclinx
         </span>
       </Link>
