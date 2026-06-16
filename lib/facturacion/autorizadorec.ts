@@ -323,3 +323,201 @@ export async function habilitarTiposDocumento(params: {
     body: { codes: params.codes },
   });
 }
+
+// ── Emitir factura (documento) — JSON, auth "company" (sk_) ────────────
+
+/** Redondea a 2 decimales de forma estable (evita 0.1+0.2 ≠ 0.3). */
+function redondear2(n: number): number {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+/**
+ * Un ítem de la factura. Por ahora solo soportamos IVA tarifa 0% (servicios
+ * médicos). `codigoPorcentajeIva` queda preparado para otras tarifas en el
+ * futuro, pero el default es "0" (0%).
+ */
+export interface ItemFactura {
+  codigoPrincipal: string;
+  descripcion: string;
+  cantidad: number;
+  precioUnitario: number;
+  /** Código SRI del porcentaje de IVA. Default "0" = 0%. (Futuro: "4"=15%, etc.) */
+  codigoPorcentajeIva?: string;
+}
+
+export interface EmitirFacturaParams {
+  sk: string; // Company API Key del médico (de leerSkMedico)
+  puntoEmision?: string; // default "001"
+  comprador: {
+    tipoIdentificacion: "04" | "05" | "06" | "07";
+    identificacion: string;
+    razonSocial: string;
+    direccion?: string;
+    email?: string;
+  };
+  items: ItemFactura[];
+  idempotencyKey: string;
+  obligadoContabilidad?: boolean; // default false → "NO"
+  fechaEmision?: Date; // default hoy
+}
+
+/** Respuesta relevante de POST /documents/emit. */
+export interface FacturaEmitida {
+  id: number;
+  secuencial: string;
+  claveAcceso: string;
+  estado: string; // AUTHORIZED / REJECTED / …
+  importeTotal: number;
+  procesamiento: {
+    resultado: "authorized" | "rejected" | "failed";
+    mensaje?: string;
+    errores?: unknown[];
+  };
+  // La API puede incluir más campos; no los tipamos estrictamente.
+  [key: string]: unknown;
+}
+
+/** Código SRI del impuesto IVA. */
+const IVA_CODIGO = "2";
+
+/** Fecha → "DD/MM/AAAA" (formato del SRI, con barras, no ISO). */
+function formatFechaSRI(d: Date): string {
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const aaaa = d.getFullYear();
+  return `${dd}/${mm}/${aaaa}`;
+}
+
+/**
+ * Emite una factura electrónica (POST /documents/emit). Síncrono: espera al
+ * SRI (5–15 s), por eso timeoutMs 60 s. Usa la Company Key (sk_) del médico.
+ *
+ * La empresa está en accessKeyMode/sequentialMode "platform": AutorizadorEC
+ * genera claveAcceso y secuencial; NO los enviamos.
+ *
+ * ⚠ El caller DEBE revisar `procesamiento.resultado`: si es "rejected" o
+ * "failed", la factura NO quedó autorizada. Esta función no lanza error en ese
+ * caso (devuelve la respuesta para que el caller decida).
+ *
+ * ⚠ SEGURIDAD: nunca se loguea el sk_.
+ */
+export async function emitirFactura(
+  params: EmitirFacturaParams
+): Promise<FacturaEmitida> {
+  const fecha = params.fechaEmision ?? new Date();
+
+  // ── Detalles + totales (IVA 0%) ────────────────────────────────────
+  // Para cada ítem: precioTotalSinImpuesto = cantidad * precioUnitario (2 dec).
+  // Con IVA 0%, el valor del impuesto es 0 y la baseImponible es ese subtotal.
+  const detalles = params.items.map((item) => {
+    const precioTotalSinImpuesto = redondear2(item.cantidad * item.precioUnitario);
+    const codigoPorcentaje = item.codigoPorcentajeIva ?? "0";
+    return {
+      codigoPrincipal: item.codigoPrincipal,
+      descripcion: item.descripcion,
+      cantidad: item.cantidad,
+      precioUnitario: item.precioUnitario,
+      descuento: 0.0,
+      precioTotalSinImpuesto,
+      impuestos: [
+        {
+          codigo: IVA_CODIGO,
+          codigoPorcentaje,
+          tarifa: 0,
+          baseImponible: precioTotalSinImpuesto,
+          valor: 0.0,
+        },
+      ],
+    };
+  });
+
+  // totalSinImpuestos = suma de subtotales (redondeada).
+  const totalSinImpuestos = redondear2(
+    detalles.reduce((acc, d) => acc + d.precioTotalSinImpuesto, 0)
+  );
+  const totalDescuento = 0.0;
+  // IVA 0% no suma nada → importeTotal = totalSinImpuestos - descuentos.
+  const importeTotal = redondear2(totalSinImpuestos - totalDescuento);
+
+  const body = {
+    tipoDocumento: "01", // Factura
+    fechaEmision: formatFechaSRI(fecha),
+    puntoEmision: params.puntoEmision ?? "001",
+    tipoIdentificacionComprador: params.comprador.tipoIdentificacion,
+    razonSocialComprador: params.comprador.razonSocial,
+    identificacionComprador: params.comprador.identificacion,
+    direccionComprador: params.comprador.direccion,
+    totalSinImpuestos,
+    totalDescuento,
+    totalConImpuestos: [
+      {
+        codigo: IVA_CODIGO,
+        codigoPorcentaje: "0",
+        baseImponible: totalSinImpuestos,
+        valor: 0.0,
+      },
+    ],
+    importeTotal,
+    moneda: "DOLAR",
+    pagos: [{ formaPago: "01", total: importeTotal }], // 01 = efectivo
+    detalles,
+    obligadoContabilidad: params.obligadoContabilidad ? "SI" : "NO",
+    idempotencyKey: params.idempotencyKey,
+  };
+
+  const factura = await autorizadorecRequest<FacturaEmitida>({
+    path: "/documents/emit",
+    method: "POST",
+    auth: { type: "company", sk: params.sk },
+    body,
+    timeoutMs: 60_000,
+  });
+
+  // Log no sensible: clave de acceso y estado (jamás el sk_).
+  console.log(
+    `[facturacion/autorizadorec] factura emitida clave=${factura.claveAcceso} estado=${factura.estado} resultado=${factura.procesamiento?.resultado}`
+  );
+
+  return factura;
+}
+
+// ── Crear punto de emisión — JSON, auth "company" (sk_) ────────────────
+
+/** Punto de emisión de una empresa (ej. "001"). */
+export interface PuntoEmision {
+  id: number;
+  code: string;
+  description: string;
+  isActive: boolean;
+}
+
+/**
+ * Crea un punto de emisión para la empresa autenticada con su sk_
+ * (POST /company/emission-points). `code` debe ser 3 dígitos.
+ *
+ * Nota: crearEmpresa NO crea el punto automáticamente; hay que crearlo aquí.
+ * Si el code ya existe, la API devuelve error (manéjalo en el caller).
+ *
+ * ⚠ SEGURIDAD: nunca se loguea el sk_. Solo se loguea el code creado.
+ */
+export async function crearPuntoEmision(params: {
+  sk: string;
+  code?: string; // default "001", 3 dígitos
+  descripcion?: string; // default "Punto de emisión principal"
+}): Promise<PuntoEmision> {
+  const code = params.code ?? "001";
+
+  const punto = await autorizadorecRequest<PuntoEmision>({
+    path: "/company/emission-points",
+    method: "POST",
+    auth: { type: "company", sk: params.sk },
+    body: {
+      code,
+      description: params.descripcion ?? "Punto de emisión principal",
+    },
+  });
+
+  console.log(`[facturacion/autorizadorec] punto de emisión creado code=${punto.code}`);
+
+  return punto;
+}

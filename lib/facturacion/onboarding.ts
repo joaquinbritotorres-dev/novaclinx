@@ -2,8 +2,10 @@ import "server-only";
 
 import {
   crearEmpresa,
+  crearPuntoEmision,
   subirCertificado,
   habilitarTiposDocumento,
+  AutorizadorECError,
 } from "@/lib/facturacion/autorizadorec";
 import { guardarSkMedico } from "@/lib/facturacion/vault";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/service-role";
@@ -35,6 +37,22 @@ export interface DarDeAltaResultado {
   certificadoVigenciaHasta: string;
 }
 
+/**
+ * Heurística para detectar "el punto de emisión ya existe" y tolerarlo en
+ * reintentos. La API no expone un código estable, así que revisamos el status
+ * (409 Conflict) y palabras clave del mensaje.
+ */
+function esPuntoYaExiste(err: AutorizadorECError): boolean {
+  if (err.statusCode === 409) return true;
+  const msg = err.message.toLowerCase();
+  return (
+    msg.includes("ya existe") ||
+    msg.includes("already exist") ||
+    msg.includes("duplicad") ||
+    msg.includes("duplicate")
+  );
+}
+
 export async function darDeAltaMedico(
   params: DarDeAltaParams
 ): Promise<DarDeAltaResultado> {
@@ -50,7 +68,7 @@ export async function darDeAltaMedico(
 
   try {
     // ── a) Crear empresa en AutorizadorEC ──────────────────────────────
-    console.log(`[onboarding] 1/4 creando empresa (medico=${params.medicoId})…`);
+    console.log(`[onboarding] 1/5 creando empresa (medico=${params.medicoId})…`);
     const empresa = await crearEmpresa({
       razonSocial: params.razonSocial,
       ruc: params.ruc,
@@ -66,9 +84,25 @@ export async function darDeAltaMedico(
     }
     const companyId = empresa.id;
 
-    // ── b) Subir el certificado .p12 ───────────────────────────────────
+    // ── b) Crear punto de emisión "001" ────────────────────────────────
+    // crearEmpresa NO lo crea automáticamente; sin él, emitir falla con
+    // "El punto de emisión 001 no existe". Usa el sk_ recién devuelto.
+    paso = "crear punto de emisión";
+    console.log(`[onboarding] 2/5 creando punto de emisión (company=${companyId})…`);
+    try {
+      await crearPuntoEmision({ sk: empresa.apiKey, code: "001" });
+    } catch (err) {
+      // Tolerante a reintentos: si el punto ya existe, no es fatal → seguimos.
+      if (err instanceof AutorizadorECError && esPuntoYaExiste(err)) {
+        console.log(`[onboarding] punto de emisión "001" ya existía; se continúa.`);
+      } else {
+        throw err;
+      }
+    }
+
+    // ── c) Subir el certificado .p12 ───────────────────────────────────
     paso = "subir certificado";
-    console.log(`[onboarding] 2/4 subiendo certificado (company=${companyId})…`);
+    console.log(`[onboarding] 3/5 subiendo certificado (company=${companyId})…`);
     const cert = await subirCertificado({
       companyId,
       p12: params.p12,
@@ -76,16 +110,16 @@ export async function darDeAltaMedico(
     });
     const certificadoVigenciaHasta = cert.certificate.expiresAt;
 
-    // ── c) Habilitar Factura (código "01") ─────────────────────────────
+    // ── d) Habilitar Factura (código "01") ─────────────────────────────
     paso = "habilitar tipos de documento";
-    console.log(`[onboarding] 3/4 habilitando factura (company=${companyId})…`);
+    console.log(`[onboarding] 4/5 habilitando factura (company=${companyId})…`);
     await habilitarTiposDocumento({ companyId, codes: ["01"] });
 
-    // ── d) Persistir config + guardar sk_ en el Vault ──────────────────
+    // ── e) Persistir config + guardar sk_ en el Vault ──────────────────
     // El RPC guardar_sk_medico EXIGE que la fila ya exista en
     // config_facturacion, por eso el upsert va ANTES de guardar el secreto.
     paso = "guardar configuración";
-    console.log(`[onboarding] 4/4 guardando configuración y credencial…`);
+    console.log(`[onboarding] 5/5 guardando configuración y credencial…`);
 
     const { error: upsertError } = await supabase
       .from("config_facturacion")

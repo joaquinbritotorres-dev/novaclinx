@@ -33,12 +33,20 @@ const medicoId = process.env.MEDICO_ID_PRUEBA;
 if (!password) throw new Error("Falta P12_PASSWORD_PRUEBA en el entorno.");
 if (!medicoId) throw new Error("Falta MEDICO_ID_PRUEBA en el entorno.");
 
-// ── Datos de PRUEBA (de entorno, con fallback claramente marcado) ─────────
+// ── Datos REALES de la médica (van en facturas; no son secretos) ──────────
+// Defaults = datos reales de la Dra. Torres Avila para que el SRI autorice
+// (el RUC debe existir en el SRI y coincidir con el certificado .p12).
+// Se pueden sobreescribir por variable de entorno.
 const DATOS_PRUEBA = {
-  razonSocial: process.env.RAZON_SOCIAL_PRUEBA ?? "MEDICO DE PRUEBA NOVACLINX",
-  ruc: process.env.RUC_PRUEBA ?? "1234567890001",
-  direccion: process.env.DIRECCION_PRUEBA ?? "Av. Siempre Viva 123, Quito",
-  email: process.env.EMAIL_PRUEBA ?? "prueba@novaclinx.com",
+  razonSocial: process.env.RAZON_SOCIAL_PRUEBA ?? "Janina Viviana Torres Avila",
+  ruc: process.env.RUC_PRUEBA ?? "0104499736001",
+  nombreComercial:
+    process.env.NOMBRE_COMERCIAL_PRUEBA ?? "Consultorio Dra. Torres Avila",
+  direccion:
+    process.env.DIRECCION_PRUEBA ?? "Calle 1 de septiembre y canton gualaquiza",
+  email: process.env.EMAIL_PRUEBA ?? "joaquinbritotorres@gmail.com",
+  // Nota: "obligado contabilidad" (false) es un dato de EMISIÓN (lo recibe
+  // emitirFactura por factura), no del onboarding; no se pasa aquí.
 };
 
 const P12_PATH = new URL("../.secrets-prueba/firma-mama.p12", import.meta.url);
@@ -56,11 +64,12 @@ async function main() {
   // Import dinámico DESPUÉS de cargar el entorno (módulos server-only).
   const { darDeAltaMedico } = await import("../lib/facturacion/onboarding.ts");
 
-  // darDeAltaMedico imprime su propio progreso 1/4 … 4/4.
+  // darDeAltaMedico imprime su propio progreso 1/5 … 5/5.
   const resultado = await darDeAltaMedico({
     medicoId: medicoId!,
     razonSocial: DATOS_PRUEBA.razonSocial,
     ruc: DATOS_PRUEBA.ruc,
+    nombreComercial: DATOS_PRUEBA.nombreComercial,
     direccion: DATOS_PRUEBA.direccion,
     email: DATOS_PRUEBA.email,
     p12,
