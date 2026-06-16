@@ -86,7 +86,7 @@ UPDATE grabaciones_consulta
 
 - `lib/prompts/*` (generación SOAP) — solo consume `generarNotaSOAP()`.
 - `lib/recetas/*` — la confirmación de medicamentos es del flujo existente.
-- `lib/datil/*` y cualquier `DATIL_*`.
+- `lib/facturacion/*` y la facturación electrónica.
 - Cliente service-role: prohibido en todo el módulo; todas las rutas usan
   `createSupabaseServerClient()` con RLS + verificación explícita de
   propiedad.

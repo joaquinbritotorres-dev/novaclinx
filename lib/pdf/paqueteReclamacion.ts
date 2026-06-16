@@ -9,9 +9,24 @@ import { RecetaTemplate } from "./recetaTemplate";
 import { PortadaTemplate } from "./portadaTemplate";
 import { parseIndicaciones } from "../recetas/parseIndicaciones";
 import type { Medicamento } from "../recetas/tipos";
+import { descargarArchivoDocumento } from "@/lib/facturacion/autorizadorec";
+import { leerSkMedico } from "@/lib/facturacion/vault";
 
 const A4_W = 595.28;
 const A4_H = 841.89;
+
+/**
+ * El paquete tiene una factura autorizada pero su RIDE (PDF) no se pudo
+ * adjuntar. La factura es el documento clave para la aseguradora, así que NO se
+ * arma el paquete sin ella: el route traduce este error a un fallo visible.
+ */
+export class RideNoDisponibleError extends Error {
+  readonly esRideNoDisponible = true as const;
+  constructor(message: string) {
+    super(message);
+    this.name = "RideNoDisponibleError";
+  }
+}
 
 function safeFilename(str: string): string {
   return str
@@ -108,11 +123,18 @@ export async function armarPaqueteReclamacion(
   if (!consulta) throw new Error("Consulta asociada no encontrada.");
 
   // ── Factura ───────────────────────────────────────────────────
+  // Esquema AutorizadorEC: "lista" = estado 'autorizada' con clave_acceso.
+  // Puede haber varias filas por consulta (reintentos) → tomamos la más
+  // reciente autorizada. Si no hay autorizada (no existe o sigue procesando),
+  // `factura` es null y el paquete se arma SIN factura (no es error de RIDE;
+  // solo se exige el RIDE cuando sí hay una factura autorizada).
   const { data: factura } = await supabase
     .from("facturas")
-    .select("datil_id, numero, estado")
+    .select("clave_acceso, secuencial, numero_autorizacion, estado, importe_total")
     .eq("consulta_id", consulta.id)
-    .in("estado", ["emitida", "autorizada"])
+    .eq("estado", "autorizada")
+    .order("creado_en", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   // ── Documentos (soportes) ─────────────────────────────────────
@@ -131,8 +153,8 @@ export async function armarPaqueteReclamacion(
 
   const parsedIndicaciones = parseIndicaciones(consulta.indicaciones);
   if (parsedIndicaciones) docsIncluidos.push("Receta medica");
-  if (factura?.datil_id) {
-    docsIncluidos.push(`Factura electronica${factura.numero ? ` N. ${factura.numero}` : ""}`);
+  if (factura?.clave_acceso) {
+    docsIncluidos.push(`Factura electronica${factura.secuencial ? ` N. ${factura.secuencial}` : ""}`);
   }
   const TIPO_LABELS: Record<string, string> = {
     factura: "Factura", examen: "Examen", informe: "Informe", receta: "Receta", otro: "Otro",
@@ -155,7 +177,7 @@ export async function armarPaqueteReclamacion(
     numeroAfiliado: pacienteSeguro?.numero_afiliado ?? null,
     tipoCobertura,
     fechaAtencion: fechaDisplay,
-    numeroFactura: factura?.numero ?? null,
+    numeroFactura: factura?.secuencial ?? null,
     reclamacionId,
     documentosIncluidos: docsIncluidos,
   }) as unknown as Parameters<typeof renderToBuffer>[0];
@@ -253,21 +275,32 @@ export async function armarPaqueteReclamacion(
     }
   }
 
-  // ── RIDE (Dátil) ──────────────────────────────────────────────
-  let rideBytes: ArrayBuffer | null = null;
-  if (factura?.datil_id) {
-    const rideRes = await fetch(
-      `https://app.datil.co/ver/${factura.datil_id}/pdf`
-    );
-    if (!rideRes.ok) {
-      throw Object.assign(
-        new Error(
-          "No se pudo obtener la factura de Dátil. Verifica que la factura esté emitida y accesible."
-        ),
-        { isDatilError: true }
+  // ── RIDE (AutorizadorEC) ──────────────────────────────────────
+  // Si hay factura autorizada, su RIDE es obligatorio en el paquete: si no se
+  // puede traer (sk null, 404 → null, o error de red), lanzamos
+  // RideNoDisponibleError para NO armar el paquete sin la factura.
+  let rideBytes: Buffer | null = null;
+  if (factura?.clave_acceso) {
+    let ridePdf: Buffer | null = null;
+    try {
+      // sk_ server-side; jamás se loguea.
+      const sk = await leerSkMedico(medico.id);
+      if (sk) {
+        ridePdf = await descargarArchivoDocumento({
+          sk,
+          claveAcceso: factura.clave_acceso,
+          fileType: "ride",
+        });
+      }
+    } catch {
+      ridePdf = null; // se traduce a RideNoDisponibleError abajo
+    }
+    if (!ridePdf) {
+      throw new RideNoDisponibleError(
+        "No se pudo adjuntar la factura al paquete. Intenta de nuevo en unos momentos."
       );
     }
-    rideBytes = await rideRes.arrayBuffer();
+    rideBytes = ridePdf;
   }
 
   // ── Descargar soportes ────────────────────────────────────────

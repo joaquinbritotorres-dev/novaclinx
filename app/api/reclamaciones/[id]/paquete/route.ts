@@ -6,7 +6,10 @@ import {
   createSupabaseServerClient,
   createSupabaseServerClientWithServiceRole,
 } from "@/lib/supabase/server";
-import { armarPaqueteReclamacion } from "@/lib/pdf/paqueteReclamacion";
+import {
+  armarPaqueteReclamacion,
+  RideNoDisponibleError,
+} from "@/lib/pdf/paqueteReclamacion";
 import { firmarPdf } from "@/lib/firma/firmar";
 
 export const runtime = "nodejs";
@@ -105,12 +108,13 @@ export async function GET(
       },
     });
   } catch (err) {
+    // RIDE no disponible: la factura existe pero su PDF no se pudo traer del
+    // proveedor. Es transitorio (502) y mostramos el mensaje al médico.
+    if (err instanceof RideNoDisponibleError) {
+      return NextResponse.json({ error: err.message }, { status: 502 });
+    }
+    // Cualquier otro error → 500 genérico.
     const msg = err instanceof Error ? err.message : "Error interno.";
-    const isDatil = err instanceof Error && (err as any).isDatilError === true;
-
-    return NextResponse.json(
-      { error: msg },
-      { status: isDatil ? 502 : 500 }
-    );
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

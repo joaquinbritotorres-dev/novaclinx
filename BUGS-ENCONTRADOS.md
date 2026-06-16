@@ -2,7 +2,7 @@
 
 Baseline al iniciar: `tsc` limpio · `vitest` 100/100 · `build` OK · base `12ff4f8` (main, sin PayPhone).
 
-Zonas congeladas en esta rama: `lib/datil/*`, lógica clínica de recetas, `lib/prompts/novaclinx-prompts-v1.ts`, `lib/scribe/*`, `app/api/grabaciones/*`. (PayPhone no está en esta rama.)
+Zonas congeladas en esta rama: facturación (ya migrada a AutorizadorEC; `lib/datil/*` fue eliminado), lógica clínica de recetas, `lib/prompts/novaclinx-prompts-v1.ts`, `lib/scribe/*`, `app/api/grabaciones/*`. (PayPhone no está en esta rama.)
 
 | # | Módulo | Bug | Fix | Commit |
 |---|--------|-----|-----|--------|
