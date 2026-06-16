@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Search } from "lucide-react";
 
 interface Props {
   initialQ: string;
@@ -22,20 +23,18 @@ export default function BuscadorPacientes({ initialQ }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2 mb-6">
+    <form onSubmit={handleSubmit} className="relative">
+      <Search
+        className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A8780]"
+        strokeWidth={1.75}
+      />
       <input
         type="search"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Buscar paciente por nombre..."
-        className="flex-1 h-11 px-3 bg-white border border-[#D1D5DB] rounded-lg text-sm text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E]"
+        placeholder="Buscar paciente por nombre…"
+        className="h-11 w-full rounded-lg border border-[#E7E3DB] bg-white pl-10 pr-3.5 text-sm text-[#1A1A18] placeholder-[#A8A49C] transition-colors focus:border-[#0F766E] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/30"
       />
-      <button
-        type="submit"
-        className="h-11 px-4 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:ring-offset-2"
-      >
-        Buscar
-      </button>
     </form>
   );
 }

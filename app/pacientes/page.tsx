@@ -1,7 +1,23 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { Plus, ChevronRight } from "lucide-react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import BuscadorPacientes from "./BuscadorPacientes";
+import Reveal from "./Reveal";
+
+const SEXO_LABELS: Record<string, string> = { M: "Masculino", F: "Femenino", O: "Otro" };
+
+/** Iniciales del paciente: primeras letras de las 2 primeras palabras ("EC"). */
+function iniciales(nombre: string): string {
+  const palabras = nombre.trim().split(/\s+/).filter(Boolean);
+  if (palabras.length === 0) return "—";
+  if (palabras.length === 1) return palabras[0].slice(0, 2).toUpperCase();
+  return (palabras[0][0] + palabras[1][0]).toUpperCase();
+}
+
+function capitalizar(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 export default async function PacientesPage({
   searchParams,
@@ -28,7 +44,7 @@ export default async function PacientesPage({
 
   let query = supabase
     .from("pacientes")
-    .select("id, nombre, edad")
+    .select("id, nombre, edad, sexo, condicion_cronica, numero_historia")
     .eq("medico_id", medico.id)
     .is("deleted_at", null)
     .order("nombre", { ascending: true });
@@ -63,76 +79,121 @@ export default async function PacientesPage({
     ultimaConsulta: ultimaMap.get(p.id) ?? null,
   }));
 
+  const totalLabel = `${lista.length} paciente${lista.length === 1 ? "" : "s"}`;
+
   return (
-    <main className="min-h-screen bg-[#F7F7F4] px-6 py-8">
-      <div className="w-full max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold text-[#0F172A]">Mis pacientes</h1>
-          <Link
-            href="/pacientes/nuevo"
-            className="h-11 px-4 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors inline-flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:ring-offset-2"
-          >
-            + Nuevo paciente
-          </Link>
-        </div>
-
-        <BuscadorPacientes initialQ={busqueda} />
-
-        {lista.length === 0 ? (
-          <div className="bg-white rounded-xl border border-[#E5E7EB] p-8 text-center">
-            {busqueda ? (
-              <p className="text-sm text-[#64748B]">
-                No se encontraron pacientes con &quot;{busqueda}&quot;.
-              </p>
-            ) : (
-              <>
-                <p className="text-sm text-[#64748B]">Aún no tienes pacientes registrados.</p>
-                <Link
-                  href="/pacientes/nuevo"
-                  className="mt-4 inline-flex items-center h-11 px-4 bg-[#0F766E] text-white text-sm font-medium rounded-lg hover:bg-[#0F766E]/90 transition-colors focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:ring-offset-2"
-                >
-                  Crear primer paciente
-                </Link>
-              </>
-            )}
+    <main className="min-h-screen bg-[#F7F7F4]">
+      <div className="mx-auto w-full max-w-6xl px-6 py-10">
+        {/* Cabecera */}
+        <Reveal delay={0}>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-[#1A1A18]">
+                Pacientes
+              </h1>
+              <p className="mt-1.5 text-sm text-[#8A8780]">{totalLabel}</p>
+            </div>
+            <Link
+              href="/pacientes/nuevo"
+              className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg bg-[#0F766E] px-5 text-sm font-medium text-white transition hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-[#0F766E]/40 focus:ring-offset-2"
+            >
+              <Plus className="h-4 w-4" strokeWidth={1.75} />
+              Nuevo paciente
+            </Link>
           </div>
-        ) : (
-          <ul className="grid md:grid-cols-2 gap-4">
-            {lista.map((p) => (
-              <li key={p.id} className="bg-white rounded-xl border border-[#E5E7EB] p-4">
-                <div className="flex items-start justify-between gap-3">
+        </Reveal>
+
+        {/* Búsqueda */}
+        <Reveal delay={70} className="mt-6">
+          <BuscadorPacientes initialQ={busqueda} />
+        </Reveal>
+
+        {/* Lista */}
+        <Reveal delay={140} className="mt-6">
+          {lista.length === 0 ? (
+            <div className="rounded-2xl border border-[#E7E3DB] bg-white px-6 py-12 text-center">
+              {busqueda ? (
+                <p className="text-sm text-[#5C5A54]">
+                  Sin resultados para «{busqueda}».
+                </p>
+              ) : (
+                <>
+                  <p className="text-base text-[#5C5A54]">Aún no tienes pacientes.</p>
+                  <Link
+                    href="/pacientes/nuevo"
+                    className="mt-5 inline-flex h-10 items-center gap-2 rounded-lg bg-[#0F766E] px-5 text-sm font-medium text-white transition hover:brightness-95"
+                  >
+                    <Plus className="h-4 w-4" strokeWidth={1.75} />
+                    Nuevo paciente
+                  </Link>
+                </>
+              )}
+            </div>
+          ) : (
+            <ul className="overflow-hidden rounded-2xl border border-[#E7E3DB] bg-white divide-y divide-[#E7E3DB]">
+              {lista.map((p) => (
+                <li key={p.id}>
                   <Link
                     href={`/pacientes/${p.id}`}
-                    className="flex-1 min-w-0 focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 rounded"
+                    className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-[#F7F7F4] focus:outline-none focus:bg-[#F7F7F4]"
                   >
-                    <p className="text-sm font-semibold text-[#0F172A] truncate">{p.nombre}</p>
-                    {p.edad != null && (
-                      <p className="text-xs text-[#64748B] mt-0.5">{p.edad} años</p>
-                    )}
-                    {p.ultimaConsulta ? (
-                      <p className="text-xs text-[#94A3B8] mt-1">
-                        Última consulta:{" "}
-                        {new Date(p.ultimaConsulta.fecha).toLocaleDateString("es-EC", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-[#94A3B8] mt-1">Sin consultas</p>
-                    )}
+                    {/* Avatar con iniciales */}
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0F766E]/[0.08] text-sm font-medium text-[#0F766E]">
+                      {iniciales(p.nombre)}
+                    </span>
+
+                    {/* Nombre + chip crónico + metadata */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-base font-medium text-[#1A1A18]">
+                          {p.nombre}
+                        </p>
+                        {p.condicion_cronica && (
+                          <span className="inline-flex shrink-0 items-center rounded-full bg-[#9A6B12]/[0.10] px-2 py-0.5 text-xs font-medium text-[#9A6B12]">
+                            {capitalizar(p.condicion_cronica)}
+                          </span>
+                        )}
+                      </div>
+                      {(() => {
+                        const meta = [
+                          p.edad != null ? `${p.edad} años` : null,
+                          p.sexo ? (SEXO_LABELS[p.sexo] ?? p.sexo) : null,
+                          p.numero_historia ?? null,
+                        ].filter(Boolean);
+                        return meta.length > 0 ? (
+                          <p className="mt-0.5 truncate text-sm text-[#8A8780]">
+                            {meta.join(" · ")}
+                          </p>
+                        ) : null;
+                      })()}
+                    </div>
+
+                    {/* Última consulta + chevron */}
+                    <div className="flex shrink-0 items-center gap-3">
+                      {p.ultimaConsulta ? (
+                        <span className="hidden text-sm text-[#8A8780] sm:inline">
+                          {new Date(p.ultimaConsulta.fecha).toLocaleDateString("es-EC", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </span>
+                      ) : (
+                        <span className="hidden text-sm text-[#A8A49C] sm:inline">
+                          Sin consultas
+                        </span>
+                      )}
+                      <ChevronRight
+                        className="h-4 w-4 shrink-0 text-[#A8A49C]"
+                        strokeWidth={1.75}
+                      />
+                    </div>
                   </Link>
-                  <Link
-                    href={`/consultas/nueva?paciente_id=${p.id}`}
-                    className="shrink-0 h-11 px-3 bg-[#F0FDFB] border border-[#0F766E] text-[#0F766E] text-xs font-medium rounded-lg hover:bg-[#CCFBF1] transition-colors inline-flex items-center focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50"
-                  >
-                    Nueva consulta
-                  </Link>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Reveal>
       </div>
     </main>
   );
