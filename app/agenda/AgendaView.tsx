@@ -469,7 +469,7 @@ export default function AgendaView({
                         cita.estado === "confirmada") && (
                         <BotonWhatsApp
                           telefono={cita.paciente_id ? cita.paciente_telefono : null}
-                          texto={`Hola ${cita.paciente_nombre ?? cita.nombre_paciente ?? ""}, le recordamos su cita el ${formatFechaLarga(cita.inicio)} a las ${formatHora(cita.inicio)}. Por favor confirme.`}
+                          texto={`¡Hola ${cita.paciente_nombre ?? cita.nombre_paciente ?? ""}! Le recordamos que tiene una cita médica el ${formatFechaLarga(cita.inicio)} a las ${formatHora(cita.inicio)}. Por favor confirme su asistencia respondiendo a este mensaje. Si necesita reagendar, comuníquese con nosotros con anticipación. ¡Le esperamos!`}
                           tipo="recordatorio"
                           paciente_id={cita.paciente_id ?? undefined}
                           cita_id={cita.id}
