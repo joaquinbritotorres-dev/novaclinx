@@ -174,3 +174,151 @@ CREATE POLICY facturas_own_all ON facturas
 CREATE INDEX IF NOT EXISTS idx_facturas_consulta ON facturas(consulta_id);
 CREATE INDEX IF NOT EXISTS idx_facturas_medico ON facturas(medico_id);
 CREATE INDEX IF NOT EXISTS idx_facturas_estado ON facturas(estado);
+
+-- ============================================================
+-- Tablas creadas manualmente, versionadas retroactivamente.
+-- ------------------------------------------------------------
+-- Estas 5 tablas YA EXISTEN en la base (se aplicaron a mano). Sus columnas y
+-- relaciones se reconstruyeron desde el uso real en el código (queries/inserts);
+-- el RLS sigue el patrón universal del proyecto. Es documentación del esquema
+-- real para que el repo lo refleje — NO ejecutar contra una base que ya las
+-- tiene. Si alguna columna/tipo difiere de la base real, conciliar con Supabase.
+-- ============================================================
+
+-- ─── Tabla: citas (agenda) — creada manualmente, versionada retroactivamente ──
+CREATE TABLE IF NOT EXISTS citas (
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  medico_id       UUID        NOT NULL REFERENCES medicos(id) ON DELETE CASCADE,
+  paciente_id     UUID        REFERENCES pacientes(id) ON DELETE SET NULL,
+  nombre_paciente TEXT,       -- nombre suelto (cita sin paciente registrado)
+  inicio          TIMESTAMPTZ NOT NULL,
+  duracion_min    INTEGER     NOT NULL DEFAULT 30,
+  motivo          TEXT,
+  estado          TEXT        NOT NULL DEFAULT 'programada'
+                              CHECK (estado IN ('programada','confirmada','atendida','no_show','cancelada')),
+  notas           TEXT,
+  deleted_at      TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE OR REPLACE TRIGGER trg_citas_updated_at
+  BEFORE UPDATE ON citas FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+ALTER TABLE citas ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY citas_own_all ON citas
+  FOR ALL
+  USING (medico_id IN (SELECT id FROM medicos WHERE user_id = auth.uid()))
+  WITH CHECK (medico_id IN (SELECT id FROM medicos WHERE user_id = auth.uid()));
+
+CREATE INDEX IF NOT EXISTS idx_citas_medico_inicio
+  ON citas(medico_id, inicio)
+  WHERE deleted_at IS NULL;
+
+-- ─── Tabla: comunicaciones (bitácora WhatsApp) — versionada retroactivamente ──
+-- Append-only: registro de comunicaciones enviadas (no se edita).
+CREATE TABLE IF NOT EXISTS comunicaciones (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  medico_id   UUID        NOT NULL REFERENCES medicos(id) ON DELETE CASCADE,
+  paciente_id UUID        NOT NULL REFERENCES pacientes(id) ON DELETE CASCADE,
+  cita_id     UUID        REFERENCES citas(id) ON DELETE SET NULL,
+  tipo        TEXT        NOT NULL,   -- p. ej. 'recordatorio', 'otro'
+  canal       TEXT,                   -- p. ej. 'whatsapp'
+  contenido   TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE comunicaciones ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY comunicaciones_own_all ON comunicaciones
+  FOR ALL
+  USING (medico_id IN (SELECT id FROM medicos WHERE user_id = auth.uid()))
+  WITH CHECK (medico_id IN (SELECT id FROM medicos WHERE user_id = auth.uid()));
+
+CREATE INDEX IF NOT EXISTS idx_comunicaciones_paciente
+  ON comunicaciones(medico_id, paciente_id, created_at DESC);
+
+-- ─── Tabla: grabaciones_consulta (scribe de voz) — versionada retroactivamente ─
+CREATE TABLE IF NOT EXISTS grabaciones_consulta (
+  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  medico_id         UUID        NOT NULL REFERENCES medicos(id) ON DELETE CASCADE,
+  paciente_id       UUID        NOT NULL REFERENCES pacientes(id) ON DELETE CASCADE,
+  consulta_id       UUID        REFERENCES consultas(id) ON DELETE SET NULL,
+  estado            TEXT        NOT NULL DEFAULT 'consentida'
+                                CHECK (estado IN ('consentida','transcrita','nota_generada','aprobada','descartada','error')),
+  audio_path        TEXT,
+  transcripcion     TEXT,
+  error_detalle     TEXT,
+  consentimiento_at TIMESTAMPTZ,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE OR REPLACE TRIGGER trg_grabaciones_consulta_updated_at
+  BEFORE UPDATE ON grabaciones_consulta FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+ALTER TABLE grabaciones_consulta ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY grabaciones_consulta_own_all ON grabaciones_consulta
+  FOR ALL
+  USING (medico_id IN (SELECT id FROM medicos WHERE user_id = auth.uid()))
+  WITH CHECK (medico_id IN (SELECT id FROM medicos WHERE user_id = auth.uid()));
+
+CREATE INDEX IF NOT EXISTS idx_grabaciones_medico
+  ON grabaciones_consulta(medico_id, created_at DESC);
+
+-- ─── Tabla: inventario_items (vacunas/insumos) — versionada retroactivamente ──
+CREATE TABLE IF NOT EXISTS inventario_items (
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  medico_id       UUID        NOT NULL REFERENCES medicos(id) ON DELETE CASCADE,
+  tipo            TEXT        NOT NULL CHECK (tipo IN ('vacuna','insumo')),
+  nombre          TEXT        NOT NULL,
+  descripcion     TEXT,
+  lote            TEXT,
+  fecha_caducidad DATE,
+  cantidad        INTEGER     NOT NULL DEFAULT 0,
+  unidad          TEXT        NOT NULL,
+  stock_minimo    INTEGER     NOT NULL DEFAULT 0,
+  deleted_at      TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE OR REPLACE TRIGGER trg_inventario_items_updated_at
+  BEFORE UPDATE ON inventario_items FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+ALTER TABLE inventario_items ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY inventario_items_own_all ON inventario_items
+  FOR ALL
+  USING (medico_id IN (SELECT id FROM medicos WHERE user_id = auth.uid()))
+  WITH CHECK (medico_id IN (SELECT id FROM medicos WHERE user_id = auth.uid()));
+
+CREATE INDEX IF NOT EXISTS idx_inventario_items_medico
+  ON inventario_items(medico_id)
+  WHERE deleted_at IS NULL;
+
+-- ─── Tabla: inventario_movimientos — versionada retroactivamente ──────────────
+-- Append-only: cada entrada/salida de stock. El ajuste de cantidad es atómico
+-- vía el RPC registrar_movimiento_inventario (migrations/20260617).
+CREATE TABLE IF NOT EXISTS inventario_movimientos (
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  medico_id       UUID        NOT NULL REFERENCES medicos(id) ON DELETE CASCADE,
+  item_id         UUID        NOT NULL REFERENCES inventario_items(id) ON DELETE CASCADE,
+  tipo_movimiento TEXT        NOT NULL CHECK (tipo_movimiento IN ('entrada','salida')),
+  cantidad        INTEGER     NOT NULL CHECK (cantidad > 0),
+  motivo          TEXT,
+  paciente_id     UUID        REFERENCES pacientes(id) ON DELETE SET NULL,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE inventario_movimientos ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY inventario_movimientos_own_all ON inventario_movimientos
+  FOR ALL
+  USING (medico_id IN (SELECT id FROM medicos WHERE user_id = auth.uid()))
+  WITH CHECK (medico_id IN (SELECT id FROM medicos WHERE user_id = auth.uid()));
+
+CREATE INDEX IF NOT EXISTS idx_inventario_movimientos_item
+  ON inventario_movimientos(item_id, created_at DESC);
