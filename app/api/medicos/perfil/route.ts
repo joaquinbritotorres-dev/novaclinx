@@ -1,10 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-guard";
-import {
-  createSupabaseServerClient,
-  createSupabaseServerClientWithServiceRole,
-} from "@/lib/supabase/server";
-import { slugify } from "@/lib/slug";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const VALID_ESPECIALIDADES = [
   "pediatria",
@@ -22,29 +18,6 @@ function isValidEspecialidad(value: unknown): value is Especialidad {
 
 function toTextOrNull(val: unknown): string | null {
   return typeof val === "string" && val.trim() ? val.trim() : null;
-}
-
-/**
- * Resuelve colisiones de slug contra otros médicos (la RLS impide leer filas
- * ajenas con el cliente SSR, así que la verificación usa service role, solo
- * lectura de slugs). Si "dra-maria-perez" está tomado, prueba -2, -3, …
- */
-async function resolverSlugUnico(
-  slugBase: string,
-  userId: string
-): Promise<string | null> {
-  const admin = createSupabaseServerClientWithServiceRole();
-  for (let i = 0; i < 20; i++) {
-    const candidato = i === 0 ? slugBase : `${slugBase}-${i + 1}`;
-    const { data } = await admin
-      .from("medicos")
-      .select("id")
-      .eq("slug", candidato)
-      .neq("user_id", userId)
-      .maybeSingle();
-    if (!data) return candidato;
-  }
-  return null;
 }
 
 export async function POST(request: NextRequest) {
@@ -145,40 +118,6 @@ export async function PATCH(request: NextRequest) {
     );
   }
 
-  const googleReviewUrl = toTextOrNull(parsed.google_review_url);
-  if (googleReviewUrl !== null && !/^https?:\/\//i.test(googleReviewUrl)) {
-    return NextResponse.json(
-      { error: "El enlace de reseñas debe empezar con http:// o https://." },
-      { status: 400 }
-    );
-  }
-
-  const perfilPublico = parsed.perfil_publico === true;
-
-  // Slug: normaliza lo enviado; si está activando el perfil público sin slug,
-  // lo deriva del nombre. Resuelve colisiones con sufijo numérico.
-  const slugBase = slugify(
-    toTextOrNull(parsed.slug) ?? (perfilPublico ? parsed.nombre : "")
-  );
-
-  let slugFinal: string | null = null;
-  if (slugBase) {
-    slugFinal = await resolverSlugUnico(slugBase, user.id);
-    if (!slugFinal) {
-      return NextResponse.json(
-        { error: "No se pudo asignar un enlace público. Prueba otro slug." },
-        { status: 409 }
-      );
-    }
-  }
-
-  if (perfilPublico && !slugFinal) {
-    return NextResponse.json(
-      { error: "Define un slug para activar el perfil público." },
-      { status: 400 }
-    );
-  }
-
   try {
     const supabase = await createSupabaseServerClient();
 
@@ -193,9 +132,6 @@ export async function PATCH(request: NextRequest) {
         telefono_consultorio: toTextOrNull(parsed.telefono_consultorio),
         ruc: toTextOrNull(parsed.ruc),
         bio: toTextOrNull(parsed.bio),
-        slug: slugFinal,
-        perfil_publico: perfilPublico,
-        google_review_url: googleReviewUrl,
       })
       .eq("user_id", user.id)
       .select()

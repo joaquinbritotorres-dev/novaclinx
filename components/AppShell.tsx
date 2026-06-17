@@ -3,9 +3,8 @@
 import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
 
-// Rutas sin sidebar (igual que las que ocultaba AppNav): auth, onboarding,
-// legales y el perfil público.
-const SIN_SIDEBAR = ["/auth/", "/onboarding/", "/privacidad", "/terminos", "/m/"];
+// Rutas sin sidebar: auth, onboarding y legales.
+const SIN_SIDEBAR = ["/auth/", "/onboarding/", "/privacidad", "/terminos"];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

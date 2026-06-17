@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { slugify } from "@/lib/slug";
 
 const ESPECIALIDADES = [
   { value: "pediatria", label: "Pediatría" },
@@ -22,9 +21,6 @@ interface MedicoPerfil {
   telefono_consultorio: string | null;
   ruc: string | null;
   bio: string | null;
-  slug: string | null;
-  perfil_publico: boolean;
-  google_review_url: string | null;
 }
 
 interface Props {
@@ -42,11 +38,6 @@ export default function PerfilForm({ medico }: Props) {
   const [direccion, setDireccion] = useState(medico.direccion_consultorio ?? "");
   const [telefono, setTelefono] = useState(medico.telefono_consultorio ?? "");
   const [bio, setBio] = useState(medico.bio ?? "");
-  const [slug, setSlug] = useState(medico.slug ?? "");
-  const [perfilPublico, setPerfilPublico] = useState(medico.perfil_publico);
-  const [googleReviewUrl, setGoogleReviewUrl] = useState(
-    medico.google_review_url ?? ""
-  );
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,9 +65,6 @@ export default function PerfilForm({ medico }: Props) {
           direccion_consultorio: direccion,
           telefono_consultorio: telefono,
           bio,
-          slug,
-          perfil_publico: perfilPublico,
-          google_review_url: googleReviewUrl,
         }),
       });
 
@@ -87,9 +75,6 @@ export default function PerfilForm({ medico }: Props) {
           typeof data.error === "string" ? data.error : undefined
         );
       }
-
-      // El servidor puede haber ajustado el slug (sufijo por colisión)
-      if (data.perfil?.slug != null) setSlug(data.perfil.slug);
 
       setSaved(true);
     } catch (err) {
@@ -259,78 +244,6 @@ export default function PerfilForm({ medico }: Props) {
               placeholder="Ej. Pediatra con 10 años de experiencia en Quito…"
               className="w-full px-3 py-2.5 bg-white border border-[#D1D5DB] rounded-lg text-sm text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:opacity-50 resize-none"
             />
-          </div>
-
-          <div>
-            <label htmlFor="slug" className="block text-sm font-medium text-[#374151] mb-1">
-              Enlace público (slug)
-            </label>
-            <input
-              id="slug"
-              type="text"
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
-              onBlur={() => setSlug((s) => slugify(s))}
-              onFocus={() => {
-                if (!slug) setSlug(slugify(nombre));
-              }}
-              disabled={saving}
-              placeholder={slugify(nombre) || "dra-maria-perez"}
-              className="w-full h-11 px-3 bg-white border border-[#D1D5DB] rounded-lg text-sm text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:opacity-50"
-            />
-            {slug && (
-              <p className="text-xs text-[#64748B] mt-1">
-                Tu página será: <span className="font-mono text-[#0F766E]">/m/{slugify(slug)}</span>
-              </p>
-            )}
-          </div>
-
-          <label className="flex items-center gap-2.5 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={perfilPublico}
-              onChange={(e) => {
-                const activo = e.target.checked;
-                setPerfilPublico(activo);
-                // Al activar, si el slug está vacío, rellenarlo de verdad con
-                // el slugify del nombre (no dejarlo solo como placeholder gris).
-                if (activo && !slug.trim()) setSlug(slugify(nombre));
-              }}
-              disabled={saving}
-              className="w-4 h-4 accent-[#0F766E]"
-            />
-            <span className="text-sm text-[#374151]">
-              Activar mi página pública (visible en buscadores)
-            </span>
-          </label>
-
-          {perfilPublico && slug && (
-            <a
-              href={`/m/${slugify(slug)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block text-sm text-[#0F766E] hover:underline"
-            >
-              Ver mi página pública →
-            </a>
-          )}
-
-          <div>
-            <label htmlFor="google_review_url" className="block text-sm font-medium text-[#374151] mb-1">
-              Enlace de reseñas de Google
-            </label>
-            <input
-              id="google_review_url"
-              type="url"
-              value={googleReviewUrl}
-              onChange={(e) => setGoogleReviewUrl(e.target.value)}
-              disabled={saving}
-              placeholder="https://g.page/r/…/review"
-              className="w-full h-11 px-3 bg-white border border-[#D1D5DB] rounded-lg text-sm text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:opacity-50"
-            />
-            <p className="text-xs text-[#64748B] mt-1">
-              Se usa al pedir reseñas por WhatsApp desde el detalle de una consulta.
-            </p>
           </div>
         </div>
       </div>

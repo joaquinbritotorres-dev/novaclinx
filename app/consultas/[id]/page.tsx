@@ -7,7 +7,6 @@ import CrearReclamacionButton from "./CrearReclamacionButton";
 import DescargasSection from "./DescargasSection";
 import NotaSoap from "./NotaSoap";
 import { parseIndicaciones } from "@/lib/recetas/parseIndicaciones";
-import BotonWhatsApp from "@/components/BotonWhatsApp";
 
 const SOAP_LABELS: Record<string, string> = {
   S: "Subjetivo",
@@ -108,7 +107,7 @@ export default async function ConsultaPage({
 
   const { data: medico } = await supabase
     .from("medicos")
-    .select("id, firma_object_key, google_review_url")
+    .select("id, firma_object_key")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -345,22 +344,6 @@ export default async function ConsultaPage({
 
             {segurosPaciente && segurosPaciente.length > 0 && (
               <CrearReclamacionButton consultaId={consulta.id} seguros={segurosPaciente as never} />
-            )}
-
-            {medico.google_review_url && paciente && (
-              <section className="rounded-xl border border-[#E7E3DB] bg-white p-5">
-                <Eyebrow>Reputación</Eyebrow>
-                <p className="mt-3 mb-4 text-sm leading-6 text-[#5C5A54]">
-                  ¿Consulta exitosa? Pide una reseña a tu paciente.
-                </p>
-                <BotonWhatsApp
-                  telefono={paciente.telefono}
-                  texto={`Hola ${paciente.nombre}, gracias por su visita. Si quedó conforme con la atención, ¿me ayudaría dejando una reseña? Solo toma un minuto: ${medico.google_review_url}`}
-                  tipo="resena"
-                  paciente_id={paciente.id}
-                  label="Pedir reseña"
-                />
-              </section>
             )}
 
             <DescargasSection
