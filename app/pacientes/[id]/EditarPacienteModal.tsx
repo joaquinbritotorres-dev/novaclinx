@@ -29,8 +29,11 @@ interface PacienteEditable {
 
 export default function EditarPacienteModal({
   paciente,
+  tieneConsultas = false,
 }: {
   paciente: PacienteEditable;
+  /** Si el paciente tiene historia clínica, no se puede eliminar (retención 15 años). */
+  tieneConsultas?: boolean;
 }) {
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
@@ -424,12 +427,22 @@ export default function EditarPacienteModal({
             <h2 className="text-base font-semibold text-[#0F172A] mb-2">
               Eliminar paciente
             </h2>
-            <p className="text-sm text-[#475569] mb-3">
-              ¿Seguro que quieres eliminar a <strong>{paciente.nombre}</strong> de tu lista?
-            </p>
-            <p className="text-xs text-[#64748B] bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 py-2 mb-5">
-              De acuerdo con la LOPDP, los datos clínicos se conservan por 15 años. El paciente desaparecerá de tu lista, pero su información permanece protegida en el sistema.
-            </p>
+            {tieneConsultas ? (
+              <p className="text-sm text-[#475569] mb-5">
+                <strong>{paciente.nombre}</strong> tiene historia clínica. La ley exige
+                conservarla 15 años, así que no se puede eliminar — su información
+                permanece protegida en el sistema.
+              </p>
+            ) : (
+              <>
+                <p className="text-sm text-[#475569] mb-3">
+                  ¿Seguro que quieres eliminar a <strong>{paciente.nombre}</strong> de tu lista?
+                </p>
+                <p className="text-xs text-[#64748B] bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 py-2 mb-5">
+                  De acuerdo con la LOPDP, los datos clínicos se conservan por 15 años. El paciente desaparecerá de tu lista, pero su información permanece protegida en el sistema.
+                </p>
+              </>
+            )}
 
             {errorMsg && (
               <p className="text-xs text-red-600 mb-3">{errorMsg}</p>
@@ -441,15 +454,17 @@ export default function EditarPacienteModal({
                 disabled={isLoading}
                 className="flex-1 h-11 border border-[#E5E7EB] text-[#374151] text-sm font-medium rounded-lg hover:bg-[#F8FAFC] transition-colors focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50"
               >
-                Cancelar
+                {tieneConsultas ? "Entendido" : "Cancelar"}
               </button>
-              <button
-                onClick={eliminar}
-                disabled={isLoading}
-                className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-red-300/50"
-              >
-                {isLoading ? "Eliminando..." : "Sí, eliminar"}
-              </button>
+              {!tieneConsultas && (
+                <button
+                  onClick={eliminar}
+                  disabled={isLoading}
+                  className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-red-300/50"
+                >
+                  {isLoading ? "Eliminando..." : "Sí, eliminar"}
+                </button>
+              )}
             </div>
           </div>
         </div>,

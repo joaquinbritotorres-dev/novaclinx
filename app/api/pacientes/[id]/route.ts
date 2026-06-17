@@ -246,7 +246,25 @@ export async function DELETE(
       );
     }
 
-    // Soft delete — LOPDP Ecuador requires 15-year data retention
+    // Retención clínica (LOPDP + AM 115/2021 MSP, 15 años): si el paciente tiene
+    // historia clínica NO puede eliminarse — la ley exige conservarla.
+    const { count: consultasCount } = await supabase
+      .from("consultas")
+      .select("id", { count: "exact", head: true })
+      .eq("paciente_id", id)
+      .eq("medico_id", medico.id);
+
+    if ((consultasCount ?? 0) > 0) {
+      return NextResponse.json(
+        {
+          error:
+            "Este paciente tiene historia clínica — la ley exige conservarla 15 años. Solo se puede archivar.",
+        },
+        { status: 409 }
+      );
+    }
+
+    // Sin historia clínica → soft delete (se conserva el dato, nunca DELETE físico).
     const { error: deleteError } = await supabase
       .from("pacientes")
       .update({ deleted_at: new Date().toISOString() })

@@ -324,6 +324,7 @@ export default async function PacientePerfilPage({
                 proximo_control: p.proximo_control,
                 consentimiento_datos_at: p.consentimiento_datos_at,
               }}
+              tieneConsultas={(consultas?.length ?? 0) > 0}
             />
           </div>
         </Reveal>

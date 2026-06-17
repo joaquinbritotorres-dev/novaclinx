@@ -12,6 +12,16 @@ export const LEGAL = {
   DOMAIN: "novaclinx.com",
 } as const;
 
+/**
+ * Retención de la historia clínica — Ecuador.
+ * Base legal: Art. 13 del Reglamento de Información de Salud / Historia Clínica
+ * Única (Acuerdo Ministerial 115/2021, MSP): 5 años de archivo activo + 10 años
+ * de archivo pasivo = 15 años mínimos de conservación. En consecuencia, un
+ * paciente con historia clínica NO puede eliminarse: sus datos se conservan
+ * (soft delete / archivo), nunca un DELETE físico.
+ */
+export const RETENCION_HISTORIA_CLINICA_ANIOS = 15;
+
 export const MICROCOPY = {
   BTN_GENERATE: "Generar borrador",
   BTN_APPROVE: "Aprobar y guardar",
