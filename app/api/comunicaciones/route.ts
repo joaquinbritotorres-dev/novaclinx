@@ -4,7 +4,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-guard";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-const TIPOS_VALIDOS = ["recordatorio", "confirmacion", "resena", "otro"] as const;
+const TIPOS_VALIDOS = ["recordatorio", "confirmacion", "otro"] as const;
 
 export async function GET(request: NextRequest) {
   const { user, errorResponse } = await requireAuth(request);

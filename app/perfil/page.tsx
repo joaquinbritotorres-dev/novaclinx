@@ -15,7 +15,7 @@ export default async function PerfilPage() {
   const { data: medico } = await supabase
     .from("medicos")
     .select(
-      "id, nombre, especialidad, registro_acess, registro_senescyt, direccion_consultorio, telefono_consultorio, ruc, firma_object_key, firma_titular, firma_valida_hasta, bio"
+      "id, nombre, especialidad, registro_acess, registro_senescyt, direccion_consultorio, telefono_consultorio, ruc, firma_object_key, firma_titular, firma_valida_hasta"
     )
     .eq("user_id", user.id)
     .maybeSingle();

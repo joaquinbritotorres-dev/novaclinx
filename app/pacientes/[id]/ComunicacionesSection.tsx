@@ -13,7 +13,6 @@ interface Comunicacion {
 const TIPO_LABELS: Record<string, string> = {
   recordatorio: "Recordatorio",
   confirmacion: "Confirmación",
-  resena: "Reseña",
   otro: "Otro",
 };
 

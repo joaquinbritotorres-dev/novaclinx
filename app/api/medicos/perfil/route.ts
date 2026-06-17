@@ -131,7 +131,6 @@ export async function PATCH(request: NextRequest) {
         direccion_consultorio: toTextOrNull(parsed.direccion_consultorio),
         telefono_consultorio: toTextOrNull(parsed.telefono_consultorio),
         ruc: toTextOrNull(parsed.ruc),
-        bio: toTextOrNull(parsed.bio),
       })
       .eq("user_id", user.id)
       .select()

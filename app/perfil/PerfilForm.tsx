@@ -20,7 +20,6 @@ interface MedicoPerfil {
   direccion_consultorio: string | null;
   telefono_consultorio: string | null;
   ruc: string | null;
-  bio: string | null;
 }
 
 interface Props {
@@ -37,8 +36,6 @@ export default function PerfilForm({ medico }: Props) {
   const [ruc, setRuc] = useState(medico.ruc ?? "");
   const [direccion, setDireccion] = useState(medico.direccion_consultorio ?? "");
   const [telefono, setTelefono] = useState(medico.telefono_consultorio ?? "");
-  const [bio, setBio] = useState(medico.bio ?? "");
-
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -64,7 +61,6 @@ export default function PerfilForm({ medico }: Props) {
           ruc,
           direccion_consultorio: direccion,
           telefono_consultorio: telefono,
-          bio,
         }),
       });
 
@@ -220,29 +216,6 @@ export default function PerfilForm({ medico }: Props) {
               disabled={saving}
               placeholder="Ej. 022345678"
               className="w-full h-11 px-3 bg-white border border-[#D1D5DB] rounded-lg text-sm text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:opacity-50"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Perfil público */}
-      <div>
-        <p className="text-xs font-semibold text-[#374151] uppercase tracking-wide mb-3">
-          Perfil público
-        </p>
-        <div className="space-y-3">
-          <div>
-            <label htmlFor="bio" className="block text-sm font-medium text-[#374151] mb-1">
-              Biografía profesional
-            </label>
-            <textarea
-              id="bio"
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              disabled={saving}
-              rows={3}
-              placeholder="Ej. Pediatra con 10 años de experiencia en Quito…"
-              className="w-full px-3 py-2.5 bg-white border border-[#D1D5DB] rounded-lg text-sm text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:opacity-50 resize-none"
             />
           </div>
         </div>
