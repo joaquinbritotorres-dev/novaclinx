@@ -289,7 +289,13 @@ export default function PerfilForm({ medico }: Props) {
             <input
               type="checkbox"
               checked={perfilPublico}
-              onChange={(e) => setPerfilPublico(e.target.checked)}
+              onChange={(e) => {
+                const activo = e.target.checked;
+                setPerfilPublico(activo);
+                // Al activar, si el slug está vacío, rellenarlo de verdad con
+                // el slugify del nombre (no dejarlo solo como placeholder gris).
+                if (activo && !slug.trim()) setSlug(slugify(nombre));
+              }}
               disabled={saving}
               className="w-4 h-4 accent-[#0F766E]"
             />
