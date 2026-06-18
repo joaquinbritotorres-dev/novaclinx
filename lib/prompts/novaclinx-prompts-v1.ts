@@ -967,14 +967,7 @@ export async function generarNotaSOAP(input: NovaclinxInput): Promise<any> {
     model: "claude-sonnet-4-6",
     temperature: 0.0,
     max_tokens: 6000,
-    system: [
-      {
-        type: "text",
-        text: systemPrompt,
-        // @ts-ignore — cache_control en beta, no en tipos oficiales
-        cache_control: { type: "ephemeral" },
-      },
-    ],
+    system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
     output_config: {
       format: {
