@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 80">
+  <defs>
+    <style>
+      .text { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 900; font-style: italic; font-size: 85px; fill: #1e3a8a; letter-spacing: -2px; }
+      .triangle { fill: #dc2626; }
+    </style>
+  </defs>
+  <text x="10" y="75" class="text">SRi</text>
+  <polygon points="145,10 180,10 180,45" class="triangle" />
+</svg>

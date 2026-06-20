@@ -80,6 +80,21 @@
   --radius-button: 0.625rem; /* 10px */
   --radius-input: 0.5rem;    /* 8px */
   --radius-badge: 999px;
+
+  /* ── Landing / paleta editorial (marketing público en /) ──────────────
+     Misma familia que el rediseño de la app (login/dashboard/sidebar) para
+     que landing → login → app se sientan el MISMO producto. Teal = único
+     acento. Contrastes verificados sobre #F7F7F4 (AA). */
+  --ln-bg: #F7F7F4;            /* canvas, blanco cálido */
+  --ln-surface: #FFFFFF;       /* cards / superficies */
+  --ln-surface-alt: #F2F1EC;   /* secciones alternas */
+  --ln-ink: #1A1A18;           /* texto principal (no #000) */
+  --ln-secondary: #5C5A54;     /* texto secundario */
+  --ln-muted: #8A8780;         /* texto terciario / labels */
+  --ln-hairline: #E7E3DB;      /* bordes 1px (nunca glow) */
+  --ln-teal: #0F766E;          /* acento: botones/fills, títulos grandes (AA 5.1:1) */
+  --ln-teal-strong: #0E6A63;   /* teal para texto pequeño y links (AA 6.0:1) */
+  --ln-amber: #9A6B12;         /* SOLO la cifra grande de dinero (AA texto grande) */
 }
 
 @layer base {

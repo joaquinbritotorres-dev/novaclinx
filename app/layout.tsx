@@ -22,8 +22,10 @@ export const metadata: Metadata = {
   title: "Novaclinx — De tu consulta a una nota lista para revisar.",
   description:
     "Novaclinx convierte la descripción de tu consulta médica en una nota clínica estructurada tipo SOAP, lista para revisar y aprobar.",
+  // `||` (no `??`): cae al fallback también si NEXT_PUBLIC_APP_URL viene como
+  // string vacío, evitando `new URL("")` → "Invalid URL" en build/runtime.
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL ?? "https://novaclinx.com"
+    process.env.NEXT_PUBLIC_APP_URL || "https://novaclinx.com"
   ),
 };
 

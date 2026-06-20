@@ -3,12 +3,20 @@
 import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
 
-// Rutas sin sidebar: auth, onboarding y legales.
-const SIN_SIDEBAR = ["/auth/", "/onboarding/", "/privacidad", "/terminos"];
+// Rutas sin sidebar: auth, onboarding, legales y marketing público.
+const SIN_SIDEBAR = [
+  "/auth/",
+  "/onboarding/",
+  "/privacidad",
+  "/terminos",
+  "/seguridad",
+  "/legal",
+];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const ocultar = SIN_SIDEBAR.some((p) => pathname.startsWith(p));
+  // "/" (landing pública) es match exacto; el resto por prefijo.
+  const ocultar = pathname === "/" || SIN_SIDEBAR.some((p) => pathname.startsWith(p));
 
   if (ocultar) return <>{children}</>;
 
