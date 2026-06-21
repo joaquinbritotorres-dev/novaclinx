@@ -11,9 +11,9 @@ export default function TrustBar() {
              <Image 
                src="/anthropic-logo.png" 
                alt="Anthropic" 
-               width={100} 
-               height={18} 
-               className="h-[14px] w-auto object-contain" 
+               width={120} 
+               height={22} 
+               className="h-[22px] w-auto object-contain" 
              />
           </div>
         </div>
