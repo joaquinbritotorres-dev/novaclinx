@@ -97,6 +97,15 @@
   --ln-amber: #9A6B12;         /* SOLO la cifra grande de dinero (AA texto grande) */
 }
 
+/* Landing en pantallas chicas (<1024px): texto principal un poco más suave
+   (gris oscuro en vez de casi-negro) — solo afecta al landing, --ln-ink no
+   se usa en ninguna otra parte de la app. En >=1024px no cambia nada. */
+@media (max-width: 1023.98px) {
+  :root {
+    --ln-ink: #333333;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
