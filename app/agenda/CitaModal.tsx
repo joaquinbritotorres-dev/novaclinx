@@ -181,7 +181,7 @@ export default function CitaModal({ fecha, fechaInicial, cita, onClose }: Props)
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40"
+      className="fixed inset-0 z-50 flex items-end sm:items-start justify-center overflow-y-auto p-4 bg-black/40"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -202,7 +202,7 @@ export default function CitaModal({ fecha, fechaInicial, cita, onClose }: Props)
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-5 py-4 flex flex-col gap-4 max-h-[80vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="px-5 py-4 flex flex-col gap-4 max-h-[80dvh] overflow-y-auto">
           {/* Patient */}
           <div>
             <label className="block text-xs font-semibold text-[#475569] uppercase tracking-wide mb-1.5">

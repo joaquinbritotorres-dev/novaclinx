@@ -74,7 +74,7 @@ export default function ItemModal({ item, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 bg-black/40"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden">
@@ -92,7 +92,7 @@ export default function ItemModal({ item, onClose }: Props) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-4 max-h-[80vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-4 max-h-[80dvh] overflow-y-auto">
           {/* Tipo */}
           <div>
             <label className="block text-xs font-semibold text-[#475569] uppercase tracking-wide mb-2">

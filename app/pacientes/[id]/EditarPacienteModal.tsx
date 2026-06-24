@@ -182,7 +182,7 @@ export default function EditarPacienteModal({
       {/* Edit modal — portal a body para escapar de ancestros con transform */}
       {mounted && editOpen && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#1A1A18]/40 px-4 pb-4 sm:pb-0"
+          className="fixed inset-0 z-50 flex items-end sm:items-start justify-center overflow-y-auto bg-[#1A1A18]/40 px-4 pb-4 sm:py-8"
           onClick={(e) => { if (e.target === e.currentTarget) setEditOpen(false); }}
         >
           <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden">
@@ -197,7 +197,7 @@ export default function EditarPacienteModal({
               </button>
             </div>
 
-            <div className="px-5 py-4 overflow-y-auto max-h-[70vh] space-y-4">
+            <div className="px-5 py-4 overflow-y-auto max-h-[70dvh] space-y-4">
               {/* Datos básicos */}
               <div>
                 <label className={labelClass}>Nombre completo *</label>
@@ -420,7 +420,7 @@ export default function EditarPacienteModal({
       {/* Delete confirmation modal — mismo patrón portal + backdrop sólido */}
       {mounted && deleteOpen && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#1A1A18]/40 px-4 pb-4 sm:pb-0"
+          className="fixed inset-0 z-50 flex items-end sm:items-start justify-center overflow-y-auto bg-[#1A1A18]/40 px-4 pb-4 sm:py-8"
           onClick={(e) => { if (e.target === e.currentTarget && !isLoading) setDeleteOpen(false); }}
         >
           <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-6">
