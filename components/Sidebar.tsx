@@ -22,7 +22,7 @@ const NAV = [
   { label: "Inventario", href: "/inventario", icon: Boxes },
 ] as const;
 
-export default function Sidebar() {
+function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const esActivo = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");
@@ -35,10 +35,11 @@ export default function Sidebar() {
     }`;
 
   return (
-    <aside className="sticky top-0 flex h-screen w-[248px] shrink-0 flex-col border-r border-[#E7E3DB] bg-white px-3 py-5 print:hidden">
+    <>
       {/* Logo */}
       <Link
         href="/dashboard"
+        onClick={onNavigate}
         className="group mb-6 flex items-center gap-2.5 px-2"
         aria-label="Novaclinx — Inicio"
       >
@@ -62,6 +63,7 @@ export default function Sidebar() {
             <Link
               key={href}
               href={href}
+              onClick={onNavigate}
               aria-current={activo ? "page" : undefined}
               className={itemClase(activo)}
             >
@@ -81,6 +83,7 @@ export default function Sidebar() {
       <div className="mt-auto border-t border-[#E7E3DB] pt-3">
         <Link
           href="/perfil"
+          onClick={onNavigate}
           aria-current={esActivo("/perfil") ? "page" : undefined}
           className={itemClase(esActivo("/perfil"))}
         >
@@ -102,6 +105,46 @@ export default function Sidebar() {
           </button>
         </form>
       </div>
-    </aside>
+    </>
+  );
+}
+
+export default function Sidebar({
+  mobileOpen = false,
+  onClose,
+}: {
+  mobileOpen?: boolean;
+  onClose?: () => void;
+}) {
+  return (
+    <>
+      {/* Desktop: estático y pegajoso. h-[100dvh] + scroll interno para que el
+          pie (perfil/cerrar sesión) nunca se recorte en viewports bajos. */}
+      <aside className="sticky top-0 hidden h-[100dvh] w-[248px] shrink-0 flex-col overflow-y-auto border-r border-[#E7E3DB] bg-white px-3 py-5 lg:flex print:hidden">
+        <SidebarContent />
+      </aside>
+
+      {/* Móvil: cajón off-canvas con backdrop. */}
+      <div
+        className={`fixed inset-0 z-40 lg:hidden ${
+          mobileOpen ? "" : "pointer-events-none"
+        }`}
+        aria-hidden={!mobileOpen}
+      >
+        <div
+          onClick={onClose}
+          className={`absolute inset-0 bg-[#1A1A18]/40 transition-opacity duration-200 ${
+            mobileOpen ? "opacity-100" : "opacity-0"
+          }`}
+        />
+        <aside
+          className={`absolute left-0 top-0 flex h-[100dvh] w-[248px] max-w-[82%] flex-col overflow-y-auto border-r border-[#E7E3DB] bg-white px-3 py-5 shadow-xl transition-transform duration-200 ease-out ${
+            mobileOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <SidebarContent onNavigate={onClose} />
+        </aside>
+      </div>
+    </>
   );
 }
