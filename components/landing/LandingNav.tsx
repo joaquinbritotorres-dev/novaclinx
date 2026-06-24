@@ -79,7 +79,7 @@ export default function LandingNav() {
         <div className="ml-auto flex shrink-0 items-center gap-3 lg:hidden">
           <Link
             href="/auth/login"
-            className="whitespace-nowrap text-sm font-semibold text-[var(--ln-secondary)] transition-colors hover:text-[var(--ln-ink)]"
+            className="inline-flex h-9 items-center whitespace-nowrap text-sm font-semibold text-[var(--ln-secondary)] transition-colors hover:text-[var(--ln-ink)]"
           >
             Iniciar sesión
           </Link>
@@ -91,6 +91,23 @@ export default function LandingNav() {
           </Link>
         </div>
       </nav>
+
+      {/* Links de sección — mobile/tablet: fila propia con scroll horizontal
+          para que no choquen entre sí ni con el logo/los botones */}
+      <div className="no-scrollbar flex w-full items-center gap-5 overflow-x-auto border-t border-[var(--ln-hairline)] px-4 py-2.5 sm:px-6 lg:hidden">
+        {LINKS.map((l) => (
+          <a
+            key={l.href}
+            href={l.href}
+            className="shrink-0 whitespace-nowrap text-[13px] font-semibold text-[var(--ln-secondary)] transition-colors hover:text-[var(--ln-ink)]"
+          >
+            {l.label}
+          </a>
+        ))}
+        {/* Espaciador: el padding derecho de un contenedor con scroll no se
+            respeta de forma confiable cuando el contenido desborda. */}
+        <div className="w-4 shrink-0 sm:w-6" aria-hidden />
+      </div>
     </header>
   );
 }
