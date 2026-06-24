@@ -3,7 +3,7 @@ import RevealOnScroll from "./RevealOnScroll";
 
 export default function Confianza() {
   return (
-    <section className="border-t border-[var(--ln-hairline)] bg-[var(--ln-surface-alt)]">
+    <section className="hidden lg:block border-t border-[var(--ln-hairline)] bg-[var(--ln-surface-alt)]">
       <div className="mx-auto w-full max-w-[1400px] px-6 py-16 md:py-28 lg:px-12 lg:py-40">
         <div className="grid items-center gap-12 lg:grid-cols-[1fr_1.1fr] lg:gap-24">
           <RevealOnScroll className="w-full">
