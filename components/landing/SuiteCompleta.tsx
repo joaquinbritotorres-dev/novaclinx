@@ -71,23 +71,23 @@ export default function SuiteCompleta() {
           </p>
         </RevealOnScroll>
 
-        <div className="mx-auto mt-12 grid max-w-[1200px] gap-6 lg:mt-20 lg:grid-cols-3">
+        <div className="mx-auto mt-12 grid max-w-[1200px] grid-cols-2 gap-3 lg:mt-20 lg:grid-cols-3 lg:gap-6">
           {FUNCIONES.map((f, i) => {
             const Icon = f.icon;
             return (
               <RevealOnScroll
                 key={f.nombre}
                 delay={(i % 3) * 60}
-                className={`group flex flex-col justify-between overflow-hidden rounded-[2rem] border border-[var(--ln-hairline)] bg-[var(--ln-surface)] p-6 transition-shadow hover:shadow-[0_8px_30px_rgba(26,26,24,0.04)] lg:rounded-[2.5rem] lg:p-10 ${i >= 4 ? "hidden lg:flex" : ""} ${f.span}`}
+                className={`group flex flex-col justify-between overflow-hidden rounded-[1.25rem] border border-[var(--ln-hairline)] bg-[var(--ln-surface)] p-4 transition-shadow hover:shadow-[0_8px_30px_rgba(26,26,24,0.04)] lg:rounded-[2.5rem] lg:p-10 ${i >= 4 ? "hidden lg:flex" : ""} ${f.span}`}
               >
                 <div>
-                  <div className="mb-5 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--ln-surface-alt)] text-[var(--ln-teal)] transition-colors group-hover:bg-[var(--ln-teal)] group-hover:text-white lg:mb-8 lg:h-12 lg:w-12">
-                    <Icon className="h-5 w-5 lg:h-6 lg:w-6" strokeWidth={2} />
+                  <div className="mb-3 inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--ln-surface-alt)] text-[var(--ln-teal)] transition-colors group-hover:bg-[var(--ln-teal)] group-hover:text-white lg:mb-8 lg:h-12 lg:w-12 lg:rounded-2xl">
+                    <Icon className="h-4 w-4 lg:h-6 lg:w-6" strokeWidth={2} />
                   </div>
-                  <h3 className="text-[18px] font-bold tracking-tight text-[var(--ln-ink)] lg:text-[22px]">
+                  <h3 className="text-[14px] font-bold leading-snug tracking-tight text-[var(--ln-ink)] lg:text-[22px]">
                     {f.nombre}
                   </h3>
-                  <p className="mt-3 text-[15px] leading-relaxed text-[var(--ln-secondary)] lg:mt-4 lg:text-[17px]">
+                  <p className="mt-1.5 text-[12px] leading-snug text-[var(--ln-secondary)] lg:mt-4 lg:text-[17px] lg:leading-relaxed">
                     {f.detalle}
                   </p>
                 </div>
