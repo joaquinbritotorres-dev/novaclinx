@@ -23,7 +23,11 @@ export default function FacturacionSRI() {
             </div>
           </div>
           <h2 className="mt-4 text-[clamp(2.5rem,4vw,3.5rem)] font-bold leading-[1.1] tracking-[-0.02em] text-[var(--ln-ink)]">
-            Facture al SRI sin salir de la consulta.
+            Facture{" "}
+            <span className="bg-gradient-to-r from-[var(--ln-teal)] to-[var(--ln-teal-strong)] bg-clip-text text-transparent lg:bg-none lg:bg-clip-border lg:text-[var(--ln-ink)]">
+              al SRI
+            </span>{" "}
+            sin salir de la consulta.
           </h2>
           <p className="mt-8 max-w-[52ch] text-[clamp(1.15rem,1.5vw,1.35rem)] leading-relaxed text-[var(--ln-secondary)]">
             Comprobantes autorizados al instante. Sin trámites paralelos.
@@ -32,7 +36,11 @@ export default function FacturacionSRI() {
 
         {/* Visual */}
         <RevealOnScroll delay={100} className="flex w-full justify-center">
-          <div className="w-full">
+          <div className="relative w-full">
+            <div
+              aria-hidden
+              className="absolute -inset-x-6 -top-8 -z-10 h-36 rounded-full bg-[var(--ln-teal)]/15 blur-[60px] lg:hidden"
+            ></div>
             <FacturaFrame />
           </div>
         </RevealOnScroll>
