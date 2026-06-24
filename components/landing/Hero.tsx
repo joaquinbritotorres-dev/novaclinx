@@ -4,7 +4,7 @@ import RevealOnScroll from "./RevealOnScroll";
 
 export default function Hero() {
   return (
-    <section className="relative mx-auto flex min-h-[calc(100dvh-4rem)] w-full items-center justify-center overflow-hidden pt-10">
+    <section className="relative mx-auto flex w-full items-start justify-center overflow-hidden pt-10 [@media(min-height:700px)]:min-h-[calc(100dvh-4rem)] [@media(min-height:700px)]:items-center">
       {/* Sazón visual: Grid sutil y glows para dar profundidad premium sin romper minimalismo */}
       <div className="absolute inset-0 z-0 pointer-events-none flex justify-center">
         {/* Grid pattern suave */}
@@ -14,7 +14,7 @@ export default function Hero() {
         <div className="absolute top-20 right-[-10%] w-[500px] h-[400px] bg-[var(--ln-amber)]/5 blur-[100px] rounded-full mix-blend-multiply opacity-50"></div>
       </div>
 
-      <div className="relative z-10 mx-auto grid w-full max-w-[1400px] items-center gap-12 px-6 py-20 lg:grid-cols-[1fr_1fr] lg:gap-20 lg:px-12">
+      <div className="relative z-10 mx-auto grid w-full max-w-[1400px] items-start gap-12 px-6 py-12 lg:grid-cols-[1fr_1fr] lg:gap-20 lg:px-12 [@media(min-height:700px)]:items-center [@media(min-height:700px)]:py-20">
         <RevealOnScroll>
           <div className="inline-flex items-center gap-2 rounded-full border border-[var(--ln-teal)]/20 bg-[var(--ln-teal)]/5 px-3.5 py-1.5 shadow-sm">
             <span className="flex h-2 w-2 rounded-full bg-[var(--ln-teal)]"></span>
