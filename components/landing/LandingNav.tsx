@@ -36,7 +36,7 @@ export default function LandingNav() {
         {/* Logo */}
         <Link
           href="/"
-          className="flex shrink-0 items-center gap-2.5"
+          className="flex min-w-0 items-center gap-2.5"
           aria-label="Novaclinx — Inicio"
         >
           <Image
@@ -44,9 +44,9 @@ export default function LandingNav() {
             alt=""
             width={32}
             height={32}
-            className="rounded-lg"
+            className="shrink-0 rounded-lg"
           />
-          <span className="text-xl font-bold tracking-tight text-[var(--ln-ink)] font-[family-name:var(--font-brand)]">
+          <span className="truncate text-xl font-bold tracking-tight text-[var(--ln-ink)] font-[family-name:var(--font-brand)]">
             Novaclinx
           </span>
         </Link>
