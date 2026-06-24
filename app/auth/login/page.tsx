@@ -134,7 +134,7 @@ function LoginContent() {
 
   if (linkSent) {
     return (
-      <main className="min-h-screen flex bg-white">
+      <main className="min-h-[100dvh] flex bg-white">
         <BrandPanel />
         <div className="flex flex-1 flex-col justify-center px-6 py-12 lg:px-16">
           <div className="w-full max-w-sm mx-auto">
@@ -157,7 +157,7 @@ function LoginContent() {
   }
 
   return (
-    <main className="min-h-screen flex bg-white">
+    <main className="min-h-[100dvh] flex bg-white">
       <BrandPanel />
 
       <div className="flex flex-1 flex-col justify-center px-6 py-12 lg:px-16">
