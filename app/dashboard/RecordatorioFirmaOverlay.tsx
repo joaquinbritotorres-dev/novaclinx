@@ -75,8 +75,9 @@ export default function RecordatorioFirmaOverlay() {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A1A18]/40 px-4 py-8">
-      <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-[#E7E3DB] bg-white shadow-xl">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#1A1A18]/40">
+      <div className="flex min-h-full items-center justify-center px-4 py-8">
+        <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-[#E7E3DB] bg-white shadow-xl">
         {/* Cerrar (equivale a "Ahora no") */}
         <button
           type="button"
@@ -186,6 +187,7 @@ export default function RecordatorioFirmaOverlay() {
             <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
             Tu firma se guarda cifrada. Solo se usa para firmar tus documentos.
           </p>
+        </div>
         </div>
       </div>
     </div>

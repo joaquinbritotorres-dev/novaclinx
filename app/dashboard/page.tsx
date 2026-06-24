@@ -187,7 +187,7 @@ export default async function DashboardPage() {
         {/* ── Métricas ── */}
         <Reveal delay={140}>
           <section className="mt-8 rounded-2xl border border-[#E7E3DB] bg-white">
-            <div className="grid grid-cols-2 divide-x divide-y divide-[#E7E3DB] md:grid-cols-4 md:divide-y-0">
+            <div className="grid grid-cols-2 divide-x divide-y divide-[#E7E3DB] lg:grid-cols-4 lg:divide-y-0">
               {metricas.map((m) => (
                 <div key={m.label} className="px-6 py-6">
                   <p className="text-3xl font-semibold tracking-tight text-[#1A1A18] tabular-nums">
