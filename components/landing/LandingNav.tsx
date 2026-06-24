@@ -13,7 +13,6 @@ const LINKS = [
 
 export default function LandingNav() {
   const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -22,21 +21,17 @@ export default function LandingNav() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  function handleLinkClick() {
-    setMenuOpen(false);
-  }
-
   return (
     <header
       className={`sticky top-0 z-50 bg-[var(--ln-bg)]/95 backdrop-blur-md transition-colors ${
         scrolled ? "border-b border-[var(--ln-hairline)]" : "border-b border-transparent"
       }`}
     >
-      <nav className="mx-auto flex w-full max-w-[1400px] h-20 items-center gap-2 px-4 sm:gap-4 sm:px-6 lg:px-12">
+      <nav className="mx-auto flex w-full max-w-[1400px] h-16 items-center gap-2 px-4 sm:gap-4 sm:px-6 lg:h-20 lg:px-12">
         {/* Logo */}
         <Link
           href="/"
-          className="flex min-w-0 items-center gap-2.5"
+          className="flex min-w-0 items-center gap-2"
           aria-label="Novaclinx — Inicio"
         >
           <Image
@@ -44,9 +39,9 @@ export default function LandingNav() {
             alt=""
             width={32}
             height={32}
-            className="shrink-0 rounded-lg"
+            className="h-7 w-7 shrink-0 rounded-lg lg:h-8 lg:w-8"
           />
-          <span className="truncate text-xl font-bold tracking-tight text-[var(--ln-ink)] font-[family-name:var(--font-brand)]">
+          <span className="hidden truncate text-lg font-bold tracking-tight text-[var(--ln-ink)] font-[family-name:var(--font-brand)] sm:inline lg:text-xl">
             Novaclinx
           </span>
         </Link>
@@ -80,58 +75,22 @@ export default function LandingNav() {
           </Link>
         </div>
 
-        {/* Mobile: CTA + hamburger */}
-        <div className="ml-auto flex shrink-0 items-center gap-2 lg:hidden">
+        {/* Account actions — mobile: sin menú, todo accesible de un toque */}
+        <div className="ml-auto flex shrink-0 items-center gap-3 lg:hidden">
           <Link
             href="/auth/login"
-            className="inline-flex h-10 items-center whitespace-nowrap rounded-xl bg-[var(--ln-teal)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--ln-teal-strong)] sm:px-4"
+            className="whitespace-nowrap text-sm font-semibold text-[var(--ln-secondary)] transition-colors hover:text-[var(--ln-ink)]"
           >
-            Crear mi cuenta
+            Iniciar sesión
           </Link>
-          <button
-            type="button"
-            onClick={() => setMenuOpen(!menuOpen)}
-            aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
-            aria-expanded={menuOpen}
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--ln-secondary)] transition-colors hover:text-[var(--ln-ink)]"
+          <Link
+            href="/auth/login"
+            className="inline-flex h-9 items-center whitespace-nowrap rounded-xl bg-[var(--ln-teal)] px-3.5 text-sm font-semibold text-white transition hover:bg-[var(--ln-teal-strong)]"
           >
-            {menuOpen ? (
-               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
-                 <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-               </svg>
-            ) : (
-               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
-                 <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-               </svg>
-            )}
-          </button>
+            Crear cuenta
+          </Link>
         </div>
       </nav>
-
-      {/* Mobile menu dropdown */}
-      {menuOpen && (
-        <div className="border-t border-[var(--ln-hairline)] bg-[var(--ln-bg)] px-6 pb-6 pt-4 lg:hidden">
-          <div className="flex flex-col gap-2">
-            {LINKS.map((l) => (
-              <a
-                key={l.href}
-                href={l.href}
-                onClick={handleLinkClick}
-                className="rounded-xl px-4 py-3 text-base font-semibold text-[var(--ln-secondary)] transition-colors hover:bg-[var(--ln-surface-alt)] hover:text-[var(--ln-ink)]"
-              >
-                {l.label}
-              </a>
-            ))}
-            <Link
-              href="/auth/login"
-              onClick={handleLinkClick}
-              className="mt-2 rounded-xl px-4 py-3 text-base font-semibold text-[var(--ln-secondary)] transition-colors hover:bg-[var(--ln-surface-alt)] hover:text-[var(--ln-ink)]"
-            >
-              Iniciar sesión
-            </Link>
-          </div>
-        </div>
-      )}
     </header>
   );
 }

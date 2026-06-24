@@ -44,22 +44,27 @@ export default function Beneficios() {
         </h2>
       </RevealOnScroll>
 
-      <div className="mt-12 grid gap-8 lg:mt-20 lg:grid-cols-2">
+      <div className="mt-12 grid gap-5 lg:mt-20 lg:gap-8 lg:grid-cols-2">
         {BENEFICIOS.map((b, i) => {
           const Icon = b.icon;
           return (
             <RevealOnScroll
               key={b.n}
               delay={i * 80}
-              className="flex flex-col p-6 md:p-8"
+              className="flex flex-col rounded-2xl border border-[var(--ln-hairline)] bg-[var(--ln-surface)] p-6 shadow-[0_2px_12px_rgba(26,26,24,0.03)] md:p-8 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none"
             >
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--ln-teal)]/[0.08]">
-                <Icon className="h-7 w-7 text-[var(--ln-teal)]" strokeWidth={2} />
+              <div className="flex items-center gap-4 lg:flex-col lg:items-start lg:gap-0">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--ln-teal)]/[0.08] lg:h-14 lg:w-14">
+                  <Icon className="h-6 w-6 text-[var(--ln-teal)] lg:h-7 lg:w-7" strokeWidth={2} />
+                </div>
+                <span className="text-[13px] font-bold text-[var(--ln-muted)] tabular-nums lg:hidden">
+                  {b.n}
+                </span>
               </div>
-              <h3 className="mt-8 text-[22px] font-bold tracking-tight text-[var(--ln-ink)]">
+              <h3 className="mt-5 text-[20px] font-bold tracking-tight text-[var(--ln-ink)] lg:mt-8 lg:text-[22px]">
                 {b.titulo}
               </h3>
-              <p className="mt-4 text-[18px] leading-relaxed text-[var(--ln-secondary)]">
+              <p className="mt-3 text-[16px] leading-relaxed text-[var(--ln-secondary)] lg:mt-4 lg:text-[18px]">
                 {b.texto}
               </p>
             </RevealOnScroll>

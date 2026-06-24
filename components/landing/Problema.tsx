@@ -27,17 +27,20 @@ export default function Problema() {
         </p>
       </RevealOnScroll>
 
-      <div className="mt-12 grid gap-px overflow-hidden rounded-[2rem] border border-[var(--ln-hairline)] bg-[var(--ln-hairline)] lg:mt-20 lg:grid-cols-3">
+      <div className="mt-12 grid gap-4 lg:mt-20 lg:grid-cols-3 lg:gap-px lg:overflow-hidden lg:rounded-[2rem] lg:border lg:border-[var(--ln-hairline)] lg:bg-[var(--ln-hairline)]">
         {FRENTES.map((f, i) => (
           <RevealOnScroll
             key={f.titulo}
             delay={i * 80}
-            className="bg-[var(--ln-surface)] p-8 md:p-10 lg:p-12"
+            className="rounded-2xl border border-[var(--ln-hairline)] bg-[var(--ln-surface)] p-7 shadow-[0_2px_12px_rgba(26,26,24,0.03)] md:p-10 lg:rounded-none lg:border-0 lg:p-12 lg:shadow-none"
           >
-            <p className="text-[14px] font-bold uppercase tracking-[0.15em] text-[var(--ln-muted)]">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--ln-teal)]/10 text-[13px] font-bold text-[var(--ln-teal-strong)] tabular-nums lg:hidden">
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <p className="mt-4 text-[14px] font-bold uppercase tracking-[0.15em] text-[var(--ln-muted)] lg:mt-0">
               {f.titulo}
             </p>
-            <p className="mt-4 text-[17px] leading-relaxed text-[var(--ln-secondary)]">
+            <p className="mt-3 text-[17px] leading-relaxed text-[var(--ln-secondary)] lg:mt-4">
               {f.texto}
             </p>
           </RevealOnScroll>
