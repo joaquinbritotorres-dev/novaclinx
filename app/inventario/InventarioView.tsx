@@ -279,7 +279,8 @@ export default function InventarioView({ items }: { items: InventarioItem[] }) {
             )}
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[680px] text-sm">
             <thead>
               <tr className="border-b border-[#E2E8F0] bg-[#F8FAFC]">
                 <th className="px-4 py-3 text-left text-xs font-semibold text-[#475569] uppercase tracking-wide">
@@ -398,6 +399,7 @@ export default function InventarioView({ items }: { items: InventarioItem[] }) {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
