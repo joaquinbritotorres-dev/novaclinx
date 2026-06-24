@@ -238,7 +238,7 @@ export default function AgendaView({
   return (
     <main className="min-h-screen bg-[#F7F7F4] px-6 py-6">
       {/* ── Encabezado ── */}
-      <div className="flex items-center gap-3 mb-5">
+      <div className="flex flex-wrap items-center gap-3 mb-5">
         <h1 className="text-xl font-bold text-[#0F172A] mr-2">Agenda</h1>
 
         <button
@@ -272,8 +272,8 @@ export default function AgendaView({
         </button>
       </div>
 
-      {/* ── Dos columnas ── */}
-      <div className="flex gap-5 items-start">
+      {/* ── Dos columnas (apiladas en móvil/escala alta) ── */}
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
 
         {/* ── Grilla del mes ── */}
         <div className="flex-1 min-w-0 bg-white border border-[#E2E8F0] rounded-xl overflow-hidden">
@@ -306,7 +306,7 @@ export default function AgendaView({
                   type="button"
                   onClick={() => setSelectedDate(dateStr)}
                   className={[
-                    "min-h-28 p-2 text-left flex flex-col border-r border-b border-[#E2E8F0]",
+                    "min-h-20 sm:min-h-28 p-2 text-left flex flex-col border-r border-b border-[#E2E8F0]",
                     "transition-colors focus:outline-none focus:z-10",
                     inMonth
                       ? "bg-white hover:bg-[#F0FDFB]"
@@ -351,7 +351,7 @@ export default function AgendaView({
         </div>
 
         {/* ── Panel del día seleccionado ── */}
-        <div className="w-[360px] shrink-0 sticky top-16">
+        <div className="w-full shrink-0 lg:w-[360px] lg:sticky lg:top-16">
           <div className="bg-white border border-[#E2E8F0] rounded-xl overflow-hidden">
             {/* Cabecera del panel */}
             <div className="px-4 py-3 border-b border-[#E2E8F0] flex items-center justify-between gap-2">
@@ -368,10 +368,8 @@ export default function AgendaView({
             </div>
 
             {/* Lista de citas */}
-            <div
-              className="divide-y divide-[#E2E8F0] overflow-y-auto"
-              style={{ maxHeight: "calc(100vh - 14rem)" }}
-            >
+            <div className="divide-y divide-[#E2E8F0] lg:max-h-[calc(100dvh-14rem)] lg:overflow-y-auto">
+
               {citasDelDia.length === 0 ? (
                 <div className="px-4 py-10 text-center">
                   <p className="text-sm text-[#94A3B8]">Sin citas este día.</p>
