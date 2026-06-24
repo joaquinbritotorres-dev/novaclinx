@@ -38,7 +38,7 @@ export const SECCIONES = [
 
 export default function SoapFrame() {
   return (
-    <div className="w-full max-w-md rounded-2xl border border-[var(--ln-hairline)] bg-[var(--ln-surface)] shadow-[0_1px_2px_rgba(26,26,24,0.04),0_12px_32px_-12px_rgba(26,26,24,0.12)]">
+    <div className="mx-auto w-full max-w-md rounded-2xl border border-[var(--ln-hairline)] bg-[var(--ln-surface)] shadow-[0_1px_2px_rgba(26,26,24,0.04),0_12px_32px_-12px_rgba(26,26,24,0.12)] lg:mx-0">
       {/* Cabecera del paciente */}
       <div className="flex items-center justify-between gap-3 border-b border-[var(--ln-hairline)] px-5 py-4">
         <div className="min-w-0">
