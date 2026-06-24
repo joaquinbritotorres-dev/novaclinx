@@ -4,7 +4,7 @@ import RevealOnScroll from "./RevealOnScroll";
 
 export default function Hero() {
   return (
-    <section className="relative mx-auto flex w-full items-start justify-center overflow-hidden pt-8 lg:pt-10 lg:[@media(min-height:700px)]:min-h-[calc(100dvh-4rem)] lg:[@media(min-height:700px)]:items-center">
+    <section className="relative mx-auto flex w-full items-start justify-center overflow-hidden pt-8 md:pt-10 md:[@media(min-height:700px)]:min-h-[calc(100dvh-4rem)] md:[@media(min-height:700px)]:items-center">
       {/* Sazón visual: Grid sutil y glows para dar profundidad premium sin romper minimalismo */}
       <div className="absolute inset-0 z-0 pointer-events-none flex justify-center">
         {/* Grid pattern suave */}
@@ -14,7 +14,7 @@ export default function Hero() {
         <div className="absolute top-20 right-[-10%] w-[500px] h-[400px] bg-[var(--ln-amber)]/5 blur-[100px] rounded-full mix-blend-multiply opacity-50"></div>
       </div>
 
-      <div className="relative z-10 mx-auto grid w-full max-w-[1400px] items-start gap-8 px-6 py-8 lg:grid-cols-[1fr_1fr] lg:gap-20 lg:py-12 lg:px-12 lg:[@media(min-height:700px)]:items-center lg:[@media(min-height:700px)]:py-20">
+      <div className="relative z-10 mx-auto grid w-full max-w-[1400px] items-start gap-8 px-6 py-8 md:grid-cols-[1fr_1fr] md:gap-10 md:py-12 lg:gap-20 lg:px-12 md:[@media(min-height:700px)]:items-center lg:[@media(min-height:700px)]:py-20">
         <RevealOnScroll>
           <div className="inline-flex items-center gap-2 rounded-full border border-[var(--ln-teal)]/20 bg-[var(--ln-teal)]/5 px-3.5 py-1.5 shadow-sm">
             <span className="flex h-2 w-2 rounded-full bg-[var(--ln-teal)]"></span>
@@ -22,13 +22,13 @@ export default function Hero() {
               Para el médico ecuatoriano
             </p>
           </div>
-          <h1 className="mt-6 max-w-[19ch] text-[clamp(2.5rem,4.5vw,4rem)] font-bold leading-[1.05] tracking-[-0.02em] text-[var(--ln-ink)] lg:max-w-none">
+          <h1 className="mt-6 max-w-[19ch] text-[clamp(2rem,4.5vw,4rem)] font-bold leading-[1.05] tracking-[-0.02em] text-[var(--ln-ink)] md:max-w-none">
             Su consultorio, sin el papeleo que le quita el día.
           </h1>
-          <p className="mt-6 max-w-[38rem] text-[clamp(1.15rem,1.8vw,1.35rem)] leading-relaxed text-[var(--ln-secondary)] lg:mt-8">
+          <p className="mt-6 max-w-[38rem] text-[clamp(1.05rem,1.8vw,1.35rem)] leading-relaxed text-[var(--ln-secondary)] md:mt-8">
             Nota SOAP, facturación al SRI y cobros a aseguradoras, en un solo lugar. Usted siempre revisa y aprueba.
           </p>
-          <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center lg:mt-12">
+          <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center md:mt-12 md:flex-col md:items-stretch lg:flex-row lg:items-center">
             <Link
               href="/auth/login"
               className="inline-flex h-14 items-center justify-center rounded-xl bg-[var(--ln-teal)] px-8 text-[17px] font-semibold text-white transition hover:bg-[var(--ln-teal-strong)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ln-teal)]/40 focus-visible:ring-offset-2"
@@ -44,8 +44,8 @@ export default function Hero() {
           </div>
         </RevealOnScroll>
 
-        <RevealOnScroll delay={120} className="flex w-full justify-center lg:justify-end">
-          <div className="w-full max-w-[650px] lg:ml-auto lg:translate-x-12">
+        <RevealOnScroll delay={120} className="flex w-full justify-center md:justify-end">
+          <div className="w-full max-w-[650px] md:ml-auto lg:translate-x-12">
             <SoapFrame />
           </div>
         </RevealOnScroll>
