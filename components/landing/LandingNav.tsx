@@ -32,7 +32,7 @@ export default function LandingNav() {
         scrolled ? "border-b border-[var(--ln-hairline)]" : "border-b border-transparent"
       }`}
     >
-      <nav className="mx-auto flex w-full max-w-[1400px] h-20 items-center gap-4 px-6 lg:px-12">
+      <nav className="mx-auto flex w-full max-w-[1400px] h-20 items-center gap-2 px-4 sm:gap-4 sm:px-6 lg:px-12">
         {/* Logo */}
         <Link
           href="/"
@@ -81,10 +81,10 @@ export default function LandingNav() {
         </div>
 
         {/* Mobile: CTA + hamburger */}
-        <div className="ml-auto flex shrink-0 items-center gap-3 lg:hidden">
+        <div className="ml-auto flex shrink-0 items-center gap-2 lg:hidden">
           <Link
             href="/auth/login"
-            className="inline-flex h-10 items-center whitespace-nowrap rounded-xl bg-[var(--ln-teal)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--ln-teal-strong)]"
+            className="inline-flex h-10 items-center whitespace-nowrap rounded-xl bg-[var(--ln-teal)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--ln-teal-strong)] sm:px-4"
           >
             Crear mi cuenta
           </Link>

@@ -15,50 +15,50 @@ const FUNCIONES = [
     detalle:
       "Toda la información se estructura y conserva según los lineamientos estrictos de ACESS y la Ley Orgánica de Protección de Datos Personales (LOPDP).",
     icon: BookOpen,
-    span: "md:col-span-2",
+    span: "lg:col-span-2",
   },
   {
     nombre: "Agenda médica",
     detalle: "Sincronice sus citas en un clic.",
     icon: CalendarDays,
-    span: "md:col-span-1",
+    span: "lg:col-span-1",
   },
   {
     nombre: "Recetas con DCI",
     detalle: "Reglamento MSP: Dosis en letras y alertas cruzadas de alergias al recetar.",
     icon: FileText,
-    span: "md:col-span-1",
+    span: "lg:col-span-1",
   },
   {
     nombre: "Certificados",
     detalle: "Formatos de reposo, aptitud y escolares, listos para su firma.",
     icon: FileSignature,
-    span: "md:col-span-1",
+    span: "lg:col-span-1",
   },
   {
     nombre: "Avisos por WhatsApp",
     detalle: "Reduce el ausentismo con recordatorios automáticos a pacientes.",
     icon: MessageCircle,
-    span: "md:col-span-1",
+    span: "lg:col-span-1",
   },
   {
     nombre: "Seguimiento",
     detalle: "Alertas tempranas de pacientes crónicos con controles pendientes.",
     icon: Activity,
-    span: "md:col-span-1",
+    span: "lg:col-span-1",
   },
   {
     nombre: "Control de inventario",
     detalle: "Gestiona vacunas e insumos médicos con alertas de bajo stock y caducidad inminente.",
     icon: Package,
-    span: "md:col-span-2",
+    span: "lg:col-span-2",
   },
 ];
 
 export default function SuiteCompleta() {
   return (
     <section className="border-t border-[var(--ln-hairline)] bg-[var(--ln-surface-alt)]">
-      <div className="mx-auto w-full max-w-[1400px] px-6 py-32 lg:px-12 md:py-40">
+      <div className="mx-auto w-full max-w-[1400px] px-6 py-16 md:py-28 lg:px-12 lg:py-40">
         <RevealOnScroll className="mx-auto max-w-4xl text-center">
           <p className="text-[16px] font-bold uppercase tracking-[0.1em] text-[var(--ln-teal-strong)]">
             Ecosistema Novaclinx
@@ -71,7 +71,7 @@ export default function SuiteCompleta() {
           </p>
         </RevealOnScroll>
 
-        <div className="mx-auto mt-20 grid max-w-[1200px] gap-6 md:grid-cols-3">
+        <div className="mx-auto mt-12 grid max-w-[1200px] gap-6 lg:mt-20 lg:grid-cols-3">
           {FUNCIONES.map((f, i) => {
             const Icon = f.icon;
             return (

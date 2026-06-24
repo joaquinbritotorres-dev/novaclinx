@@ -34,7 +34,7 @@ const BENEFICIOS = [
 
 export default function Beneficios() {
   return (
-    <section className="mx-auto w-full max-w-[1400px] px-6 py-32 lg:px-12 md:py-40">
+    <section className="mx-auto w-full max-w-[1400px] px-6 py-16 md:py-28 lg:px-12 lg:py-40">
       <RevealOnScroll className="mx-auto max-w-4xl text-center">
         <p className="text-[16px] font-bold uppercase tracking-[0.1em] text-[var(--ln-teal-strong)]">
           Por qué Novaclinx
@@ -44,7 +44,7 @@ export default function Beneficios() {
         </h2>
       </RevealOnScroll>
 
-      <div className="mt-20 grid gap-8 sm:grid-cols-2">
+      <div className="mt-12 grid gap-8 lg:mt-20 lg:grid-cols-2">
         {BENEFICIOS.map((b, i) => {
           const Icon = b.icon;
           return (

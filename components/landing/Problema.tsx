@@ -17,7 +17,7 @@ const FRENTES = [
 
 export default function Problema() {
   return (
-    <section className="mx-auto w-full max-w-[1400px] px-6 py-32 lg:px-12 md:py-40">
+    <section className="mx-auto w-full max-w-[1400px] px-6 py-16 md:py-28 lg:px-12 lg:py-40">
       <RevealOnScroll className="mx-auto max-w-4xl text-center">
         <h2 className="text-[clamp(2.5rem,4vw,3.5rem)] font-bold leading-[1.1] tracking-[-0.02em] text-[var(--ln-ink)]">
           Atender es lo de menos. Lo que le quita el día es todo lo demás.
@@ -27,12 +27,12 @@ export default function Problema() {
         </p>
       </RevealOnScroll>
 
-      <div className="mt-20 grid gap-px overflow-hidden rounded-[2rem] border border-[var(--ln-hairline)] bg-[var(--ln-hairline)] md:grid-cols-3">
+      <div className="mt-12 grid gap-px overflow-hidden rounded-[2rem] border border-[var(--ln-hairline)] bg-[var(--ln-hairline)] lg:mt-20 lg:grid-cols-3">
         {FRENTES.map((f, i) => (
           <RevealOnScroll
             key={f.titulo}
             delay={i * 80}
-            className="bg-[var(--ln-surface)] p-10 md:p-12"
+            className="bg-[var(--ln-surface)] p-8 md:p-10 lg:p-12"
           >
             <p className="text-[14px] font-bold uppercase tracking-[0.15em] text-[var(--ln-muted)]">
               {f.titulo}

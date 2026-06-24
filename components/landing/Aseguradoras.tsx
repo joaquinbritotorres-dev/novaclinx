@@ -13,7 +13,7 @@ export default function Aseguradoras() {
       id="aseguradoras"
       className="border-t border-[var(--ln-hairline)] bg-[var(--ln-surface-alt)]"
     >
-      <div className="mx-auto w-full max-w-[1400px] px-6 py-32 lg:px-12 md:py-40">
+      <div className="mx-auto w-full max-w-[1400px] px-6 py-16 md:py-28 lg:px-12 lg:py-40">
         {/* Encabezado */}
         <RevealOnScroll className="mx-auto max-w-4xl text-center">
           <p className="text-[16px] font-bold uppercase tracking-[0.1em] text-[var(--ln-teal-strong)]">
@@ -27,7 +27,7 @@ export default function Aseguradoras() {
           </p>
         </RevealOnScroll>
 
-        <div className="mx-auto mt-24 grid max-w-[1200px] items-center gap-16 lg:grid-cols-[1fr_1.1fr] lg:gap-24">
+        <div className="mx-auto mt-14 grid max-w-[1200px] items-center gap-12 lg:mt-24 lg:grid-cols-[1fr_1.1fr] lg:gap-24">
           {/* Izquierda: cifra de ejemplo + puntos */}
           <RevealOnScroll className="order-2 w-full lg:order-1">
             {/* Cifra de dinero — ejemplo ilustrativo, NO un claim */}

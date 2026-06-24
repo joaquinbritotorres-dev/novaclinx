@@ -6,7 +6,7 @@ export default function Footer() {
     <footer className="border-t border-[var(--ln-hairline)] bg-[var(--ln-bg)]">
       <div className="mx-auto w-full max-w-[1400px] px-6 py-12 md:py-16 lg:px-12">
         {/* Top row */}
-        <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
+        <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
           {/* Brand */}
           <div>
             <Link
@@ -31,7 +31,7 @@ export default function Footer() {
           </div>
 
           {/* Link columns */}
-          <div className="flex gap-12">
+          <div className="flex flex-col gap-6 sm:flex-row sm:gap-12">
             <div>
               <p className="text-[13px] font-medium uppercase tracking-[0.14em] text-[var(--ln-muted)]">
                 Legal
@@ -82,7 +82,7 @@ export default function Footer() {
         </div>
 
         {/* Bottom */}
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-[var(--ln-hairline)] pt-8 md:flex-row">
+        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-[var(--ln-hairline)] pt-8 lg:flex-row">
           <p className="text-[14px] text-[var(--ln-muted)]">
             © 2026 Novaclinx. Todos los derechos reservados.
           </p>

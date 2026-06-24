@@ -4,8 +4,8 @@ import RevealOnScroll from "./RevealOnScroll";
 export default function Confianza() {
   return (
     <section className="border-t border-[var(--ln-hairline)] bg-[var(--ln-surface-alt)]">
-      <div className="mx-auto w-full max-w-[1400px] px-6 py-32 lg:px-12 md:py-40">
-        <div className="grid items-center gap-16 lg:grid-cols-[1fr_1.1fr] lg:gap-24">
+      <div className="mx-auto w-full max-w-[1400px] px-6 py-16 md:py-28 lg:px-12 lg:py-40">
+        <div className="grid items-center gap-12 lg:grid-cols-[1fr_1.1fr] lg:gap-24">
           <RevealOnScroll className="w-full">
             <p className="text-[16px] font-bold uppercase tracking-[0.1em] text-[var(--ln-teal-strong)]">
               Por qué confiar
@@ -21,7 +21,7 @@ export default function Confianza() {
           </RevealOnScroll>
 
           <RevealOnScroll delay={100} className="w-full">
-            <div className="rounded-[2rem] border border-[var(--ln-hairline)] bg-[var(--ln-surface)] p-10 shadow-[0_4px_24px_rgba(26,26,24,0.04)] md:p-12">
+            <div className="rounded-[2rem] border border-[var(--ln-hairline)] bg-[var(--ln-surface)] p-8 shadow-[0_4px_24px_rgba(26,26,24,0.04)] lg:p-12">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--ln-teal)]/[0.08]">
                 <ShieldCheck className="h-7 w-7 text-[var(--ln-teal)]" strokeWidth={2} />
               </div>

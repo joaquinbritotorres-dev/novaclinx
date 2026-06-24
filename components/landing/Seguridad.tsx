@@ -29,7 +29,7 @@ export default function Seguridad() {
       id="seguridad"
       className="border-t border-[var(--ln-hairline)]"
     >
-      <div className="mx-auto w-full max-w-[1400px] px-6 py-32 lg:px-12 md:py-40">
+      <div className="mx-auto w-full max-w-[1400px] px-6 py-16 md:py-28 lg:px-12 lg:py-40">
         <RevealOnScroll className="mx-auto max-w-4xl text-center">
           <p className="text-[16px] font-bold uppercase tracking-[0.1em] text-[var(--ln-teal-strong)]">
             Seguridad y cumplimiento
@@ -42,7 +42,7 @@ export default function Seguridad() {
           </p>
         </RevealOnScroll>
 
-        <div className="mt-20 grid gap-y-16 gap-x-12 sm:grid-cols-2">
+        <div className="mt-12 grid gap-y-12 gap-x-12 lg:mt-20 lg:gap-y-16 lg:grid-cols-2">
           {PUNTOS.map((p, i) => (
             <RevealOnScroll
               key={p.titulo}
