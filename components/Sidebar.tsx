@@ -22,7 +22,17 @@ const NAV = [
   { label: "Inventario", href: "/inventario", icon: Boxes },
 ] as const;
 
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+/** rail=true (desktop): se usa dentro del riel angosto que se expande con
+ *  hover/foco (ver Sidebar abajo) — las etiquetas quedan colapsadas (ancho 0)
+ *  hasta que el ancestro .group/sidebar recibe hover o foco. rail=false
+ *  (cajón móvil): etiquetas siempre visibles, igual que antes. */
+function SidebarContent({
+  onNavigate,
+  rail = false,
+}: {
+  onNavigate?: () => void;
+  rail?: boolean;
+}) {
   const pathname = usePathname();
   const esActivo = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");
@@ -34,13 +44,17 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         : "text-[#5C5A54] hover:bg-[#F2EFE9] hover:text-[#1A1A18]"
     }`;
 
+  const etiquetaClase = rail
+    ? "max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 group-hover/sidebar:max-w-[160px] group-hover/sidebar:opacity-100 group-focus-within/sidebar:max-w-[160px] group-focus-within/sidebar:opacity-100"
+    : "";
+
   return (
     <>
       {/* Logo */}
       <Link
         href="/dashboard"
         onClick={onNavigate}
-        className="group mb-6 flex items-center gap-2.5 px-2"
+        className="mb-6 flex items-center gap-2.5 px-2"
         aria-label="Novaclinx — Inicio"
       >
         <Image
@@ -50,7 +64,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           height={30}
           className="shrink-0 rounded-lg"
         />
-        <span className="text-lg font-semibold tracking-tight text-[#1A1A18] font-[family-name:var(--font-brand)]">
+        <span
+          className={`text-lg font-semibold tracking-tight text-[#1A1A18] font-[family-name:var(--font-brand)] ${etiquetaClase}`}
+        >
           Novaclinx
         </span>
       </Link>
@@ -65,6 +81,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               href={href}
               onClick={onNavigate}
               aria-current={activo ? "page" : undefined}
+              title={rail ? label : undefined}
               className={itemClase(activo)}
             >
               <Icon
@@ -73,7 +90,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                 }`}
                 strokeWidth={1.75}
               />
-              {label}
+              <span className={etiquetaClase}>{label}</span>
             </Link>
           );
         })}
@@ -85,6 +102,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           href="/perfil"
           onClick={onNavigate}
           aria-current={esActivo("/perfil") ? "page" : undefined}
+          title={rail ? "Mi perfil" : undefined}
           className={itemClase(esActivo("/perfil"))}
         >
           <UserRound
@@ -93,15 +111,16 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             }`}
             strokeWidth={1.75}
           />
-          Mi perfil
+          <span className={etiquetaClase}>Mi perfil</span>
         </Link>
         <form action={signOutAction}>
           <button
             type="submit"
+            title={rail ? "Cerrar sesión" : undefined}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[#5C5A54] transition-colors hover:bg-[#F2EFE9] hover:text-[#1A1A18]"
           >
             <LogOut className="h-[18px] w-[18px] shrink-0 text-[#8A8780]" strokeWidth={1.75} />
-            Cerrar sesión
+            <span className={etiquetaClase}>Cerrar sesión</span>
           </button>
         </form>
       </div>
@@ -118,10 +137,14 @@ export default function Sidebar({
 }) {
   return (
     <>
-      {/* Desktop: estático y pegajoso. h-[100dvh] + scroll interno para que el
-          pie (perfil/cerrar sesión) nunca se recorte en viewports bajos. */}
-      <aside className="sticky top-0 hidden h-[100dvh] w-[248px] shrink-0 flex-col overflow-y-auto border-r border-[#E7E3DB] bg-white px-3 py-5 lg:flex print:hidden">
-        <SidebarContent />
+      {/* Desktop: riel angosto y fijo (no empuja el contenido) que se expande
+          encima de la página al pasar el mouse o al recibir foco de teclado.
+          Así el contenido real (agenda, pacientes, etc.) siempre tiene mucho
+          más espacio disponible. */}
+      <aside className="group/sidebar sticky top-0 hidden h-[100dvh] w-[72px] shrink-0 lg:block print:hidden">
+        <div className="absolute inset-y-0 left-0 z-30 flex w-[72px] flex-col overflow-y-auto border-r border-[#E7E3DB] bg-white px-3 py-5 transition-[width,box-shadow] duration-200 ease-out group-hover/sidebar:w-[232px] group-hover/sidebar:shadow-2xl group-focus-within/sidebar:w-[232px] group-focus-within/sidebar:shadow-2xl">
+          <SidebarContent rail />
+        </div>
       </aside>
 
       {/* Móvil: cajón off-canvas con backdrop. */}
