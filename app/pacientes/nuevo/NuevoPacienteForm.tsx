@@ -34,7 +34,6 @@ export default function NuevoPacienteForm() {
   const [tipoSeguro, setTipoSeguro] = useState("ninguno");
   const [alergias, setAlergias] = useState("");
   const [condicionCronica, setCondicionCronica] = useState("");
-  const [proximoControl, setProximoControl] = useState("");
   const [direccion, setDireccion] = useState("");
   const [telefono, setTelefono] = useState("");
   const [consentimientoDatos, setConsentimientoDatos] = useState(false);
@@ -69,7 +68,6 @@ export default function NuevoPacienteForm() {
           tipo_seguro: tipoSeguro,
           alergias,
           condicion_cronica: condicionCronica,
-          proximo_control: condicionCronica.trim() ? proximoControl || null : null,
           direccion,
           telefono,
           consentimiento_datos: consentimientoDatos,
@@ -290,22 +288,6 @@ export default function NuevoPacienteForm() {
               className={inputClass}
             />
           </div>
-
-          {condicionCronica.trim() && (
-            <div>
-              <label htmlFor="proximo_control" className="block text-sm font-medium text-[#374151] mb-1">
-                Próximo control
-              </label>
-              <input
-                id="proximo_control"
-                type="date"
-                value={proximoControl}
-                onChange={(e) => setProximoControl(e.target.value)}
-                disabled={loading}
-                className={inputClass}
-              />
-            </div>
-          )}
 
           {/* Contacto */}
           <p className={sectionLabel}>Contacto (opcional)</p>
