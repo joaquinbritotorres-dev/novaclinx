@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { X, Plus } from "lucide-react";
 import type { MedicamentoPropuesto, Medicamento } from "@/lib/recetas/tipos";
 import MedicamentoCard from "./MedicamentoCard";
 import { contarVerificar } from "@/lib/recetas/gateDocumentos";
@@ -72,6 +73,7 @@ export default function ResultadoConsulta({
 
   const [seguimientoPlazo,  setSeguimientoPlazo]  = useState(soapOutput.seguimiento_plazo  ?? "");
   const [seguimientoMotivo, setSeguimientoMotivo] = useState(soapOutput.seguimiento_motivo ?? "");
+  const [signosAlarma,      setSignosAlarma]      = useState<string[]>(soapOutput.signos_alarma);
 
   const [saving,    setSaving]    = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -81,7 +83,6 @@ export default function ResultadoConsulta({
 
   const hasIndicaciones  = soapOutput.indicaciones !== null;
   const hasSeguimiento   = soapOutput.seguimiento_plazo !== null;
-  const hasSignosAlarma  = soapOutput.signos_alarma.length > 0;
   const todosConfirmados = !hasIndicaciones || medicamentos.every((m) => m.confirmado === true);
 
   const soapSetters: Record<keyof SoapSections, (v: string) => void> = {
@@ -128,7 +129,7 @@ export default function ResultadoConsulta({
           cie10_codigo: cie10Codigo.trim(),
           cie10_descripcion: cie10Descripcion.trim(),
           indicaciones: hasIndicaciones ? medicamentos : null,
-          signos_alarma: soapOutput.signos_alarma,
+          signos_alarma: signosAlarma.filter((s) => s.trim()),
           seguimiento_plazo:
             hasSeguimiento && seguimientoPlazo.trim() ? seguimientoPlazo.trim() : null,
           seguimiento_motivo:
@@ -249,22 +250,53 @@ export default function ResultadoConsulta({
         </div>
       )}
 
-      {/* Signos de alarma */}
-      {hasSignosAlarma && (
-        <div className="bg-[#FFF7ED] border border-[#FED7AA] rounded-lg px-4 py-3">
-          <p className="text-xs font-semibold text-[#C2410C] uppercase tracking-wide mb-2">
-            Signos de alarma
-          </p>
-          <ul className="space-y-1.5">
-            {soapOutput.signos_alarma.map((signo, idx) => (
-              <li key={idx} className="flex items-start gap-2 text-sm text-[#7C2D12]">
-                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#EA580C] shrink-0" />
-                {signo}
+      {/* Signos de alarma — editables */}
+      <div className="bg-[#FFF7ED] border border-[#FED7AA] rounded-lg px-4 py-3">
+        <p className="text-xs font-semibold text-[#C2410C] uppercase tracking-wide mb-2">
+          Signos de alarma
+        </p>
+        {signosAlarma.length > 0 ? (
+          <ul className="space-y-2 mb-2">
+            {signosAlarma.map((signo, idx) => (
+              <li key={idx} className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#EA580C] shrink-0" aria-hidden />
+                <input
+                  type="text"
+                  value={signo}
+                  onChange={(e) => {
+                    const next = [...signosAlarma];
+                    next[idx] = e.target.value;
+                    setSignosAlarma(next);
+                  }}
+                  disabled={saving}
+                  aria-label={`Signo de alarma ${idx + 1}`}
+                  className="flex-1 px-2 py-1 bg-white border border-[#FED7AA] rounded-md text-sm text-[#7C2D12] placeholder-[#FCA57A] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/30 focus:border-[#EA580C] disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setSignosAlarma((prev) => prev.filter((_, i) => i !== idx))}
+                  disabled={saving}
+                  aria-label="Eliminar signo de alarma"
+                  className="text-[#FCA57A] hover:text-[#DC2626] transition-colors disabled:opacity-50"
+                >
+                  <X className="h-4 w-4" strokeWidth={1.75} />
+                </button>
               </li>
             ))}
           </ul>
-        </div>
-      )}
+        ) : (
+          <p className="text-xs text-[#D97706] mb-2">Sin signos de alarma documentados.</p>
+        )}
+        <button
+          type="button"
+          onClick={() => setSignosAlarma((prev) => [...prev, ""])}
+          disabled={saving}
+          className="flex items-center gap-1 text-xs font-medium text-[#EA580C] hover:text-[#C2410C] transition-colors disabled:opacity-50"
+        >
+          <Plus className="h-3.5 w-3.5" strokeWidth={2} />
+          Añadir signo de alarma
+        </button>
+      </div>
 
       {/* Seguimiento */}
       {hasSeguimiento && (
