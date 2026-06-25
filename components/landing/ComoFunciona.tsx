@@ -85,7 +85,7 @@ export default function ComoFunciona() {
       id="como-funciona"
       className="border-t border-[var(--ln-hairline)] bg-[var(--ln-surface-alt)]"
     >
-      <div className="mx-auto w-full max-w-[1400px] px-6 py-32 lg:px-12 md:py-40">
+      <div className="mx-auto w-full max-w-[1400px] px-6 py-16 md:py-28 lg:px-12 lg:py-40">
         <RevealOnScroll className="mx-auto max-w-4xl text-center">
           <p className="text-[16px] font-bold uppercase tracking-[0.1em] text-[var(--ln-teal-strong)]">
             Cómo funciona
@@ -95,14 +95,14 @@ export default function ComoFunciona() {
           </h2>
         </RevealOnScroll>
 
-        <div className="mx-auto mt-24 flex max-w-[1200px] flex-col gap-24 md:gap-32">
+        <div className="mx-auto mt-14 flex max-w-[1200px] flex-col gap-16 lg:mt-24 lg:gap-32">
           {PASOS.map((p, i) => (
             <div
               key={p.n}
-              className="grid items-center gap-12 md:grid-cols-[1fr_1.1fr] md:gap-20"
+              className="grid items-center gap-8 lg:grid-cols-[1fr_1.1fr] lg:gap-20"
             >
               {/* Texto */}
-              <RevealOnScroll className={i % 2 === 1 ? "md:order-2" : ""}>
+              <RevealOnScroll className={i % 2 === 1 ? "lg:order-2" : ""}>
                 <span className="text-[17px] font-bold text-[var(--ln-teal-strong)] tabular-nums">
                   {p.n}
                 </span>
@@ -117,7 +117,7 @@ export default function ComoFunciona() {
               {/* Visual */}
               <RevealOnScroll
                 delay={100}
-                className={`flex w-full ${i % 2 === 1 ? "md:order-1" : ""}`}
+                className={`flex w-full ${i % 2 === 1 ? "lg:order-1" : ""}`}
               >
                 <div className="w-full">
                   {p.visual}

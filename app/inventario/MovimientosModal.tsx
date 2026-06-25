@@ -45,10 +45,10 @@ export default function MovimientosModal({ item, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 bg-black/40"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[80vh]">
+      <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[85dvh]">
         <div className="px-6 py-4 border-b border-[#E2E8F0] flex items-center justify-between shrink-0">
           <div>
             <h2 className="text-base font-bold text-[#0F172A]">Historial de movimientos</h2>

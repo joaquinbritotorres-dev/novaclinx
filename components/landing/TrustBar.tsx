@@ -3,7 +3,7 @@ import Image from "next/image";
 export default function TrustBar() {
   return (
     <section className="border-y border-[var(--ln-hairline)] bg-[var(--ln-surface-alt)]">
-      <div className="mx-auto flex w-full max-w-[1400px] flex-col items-center justify-between gap-4 px-6 py-4 md:flex-row lg:px-12">
+      <div className="mx-auto flex w-full max-w-[1400px] flex-col items-center justify-between gap-4 px-6 py-4 lg:flex-row lg:px-12">
         {/* Sazón: Powered by Anthropic */}
         <div className="flex items-center gap-3">
           <span className="text-[13px] font-medium text-[var(--ln-secondary)]">
@@ -21,7 +21,7 @@ export default function TrustBar() {
         </div>
 
         {/* Legal y Cupos */}
-        <p className="text-center text-[13px] leading-relaxed text-[var(--ln-secondary)] md:text-right">
+        <p className="text-center text-[13px] leading-relaxed text-[var(--ln-secondary)] lg:text-right">
           Diseñado conforme a la LOPDP
           <span className="mx-2 text-[var(--ln-muted)]" aria-hidden>
             ·

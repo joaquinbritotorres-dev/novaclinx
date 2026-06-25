@@ -35,8 +35,8 @@ export default function FAQ() {
 
   return (
     <section className="border-t border-[var(--ln-hairline)]">
-      <div className="mx-auto grid w-full max-w-[1400px] gap-12 px-6 py-32 lg:px-12 md:py-40 lg:grid-cols-[1fr_1.5fr] lg:gap-24 items-start">
-        <RevealOnScroll className="sticky top-32">
+      <div className="mx-auto grid w-full max-w-[1400px] gap-10 px-6 py-16 md:py-28 lg:gap-24 lg:px-12 lg:py-40 lg:grid-cols-[1fr_1.5fr] items-start">
+        <RevealOnScroll className="lg:sticky lg:top-32">
           <p className="text-[16px] font-bold uppercase tracking-[0.1em] text-[var(--ln-teal-strong)]">
             Preguntas frecuentes
           </p>

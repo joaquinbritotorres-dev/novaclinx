@@ -80,7 +80,8 @@ export default function SeguimientoView({ pacientes, hoy }: Props) {
           </div>
         ) : (
           <div className="bg-white rounded-xl border border-[#E5E7EB] overflow-hidden">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-[#E5E7EB] bg-[#F8FAFC] text-left">
                   <th className="px-4 py-3 text-xs font-semibold text-[#475569] uppercase tracking-wide">
@@ -155,6 +156,7 @@ export default function SeguimientoView({ pacientes, hoy }: Props) {
                 })}
               </tbody>
             </table>
+            </div>
           </div>
         )}
       </div>

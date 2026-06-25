@@ -24,7 +24,13 @@ export default function Reveal({
       return;
     }
     const r = requestAnimationFrame(() => setShown(true));
-    return () => cancelAnimationFrame(r);
+    // Red de seguridad: si rAF se estrangula (pestaña en segundo plano, etc.),
+    // revela igual para no dejar el contenido invisible.
+    const t = window.setTimeout(() => setShown(true), 800);
+    return () => {
+      cancelAnimationFrame(r);
+      window.clearTimeout(t);
+    };
   }, []);
 
   return (

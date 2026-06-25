@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Fraunces } from "next/font/google";
+import { Inter, Fraunces, Manrope } from "next/font/google";
 import "./globals.css";
 import AppShell from "@/components/AppShell";
 
@@ -16,6 +16,15 @@ const fraunces = Fraunces({
   subsets: ["latin"],
   display: "swap",
   weight: ["500", "600"],
+});
+
+// Tipografía del landing público en pantallas chicas (<1024px) — vía clase
+// font-[family-name:var(--font-manrope)] en app/page.tsx. No reemplaza a
+// Inter en el resto de la app ni en el landing en escritorio.
+const manrope = Manrope({
+  variable: "--font-manrope",
+  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -35,7 +44,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${inter.variable} ${fraunces.variable} h-full antialiased`}>
+    <html lang="es" className={`${inter.variable} ${fraunces.variable} ${manrope.variable} h-full antialiased`}>
       <body className="min-h-full bg-background text-foreground">
         <AppShell>{children}</AppShell>
       </body>

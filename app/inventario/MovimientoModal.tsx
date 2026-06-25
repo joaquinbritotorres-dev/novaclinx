@@ -100,7 +100,7 @@ export default function MovimientoModal({ item, tipoInicial, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 bg-black/40"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden">
