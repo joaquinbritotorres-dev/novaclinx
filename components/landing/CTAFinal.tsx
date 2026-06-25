@@ -24,7 +24,7 @@ export default function CTAFinal() {
         <div className="relative z-10 flex shrink-0 flex-col items-center gap-3 lg:items-end">
           <Link
             href="/auth/login"
-            className="inline-flex h-14 items-center justify-center rounded-xl bg-gradient-to-r from-[var(--ln-teal)] to-[var(--ln-teal-strong)] px-8 text-[17px] font-semibold text-white shadow-[0_10px_28px_-8px_rgba(15,118,110,0.5)] transition hover:scale-[1.02] hover:shadow-[0_14px_32px_-8px_rgba(15,118,110,0.6)] active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ln-teal)]/40 focus-visible:ring-offset-2 lg:bg-none lg:bg-[var(--ln-teal)] lg:shadow-sm lg:hover:bg-[var(--ln-teal-strong)] lg:hover:shadow-sm"
+            className="inline-flex h-14 items-center justify-center rounded-xl bg-gradient-to-r from-[var(--ln-teal)] to-[var(--ln-teal-strong)] px-8 text-[17px] font-semibold text-white shadow-[0_10px_28px_-8px_rgba(15,118,110,0.5)] transition hover:scale-[1.02] hover:shadow-[0_14px_32px_-8px_rgba(15,118,110,0.6)] active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ln-teal)]/40 focus-visible:ring-offset-2"
           >
             Crear mi cuenta
           </Link>

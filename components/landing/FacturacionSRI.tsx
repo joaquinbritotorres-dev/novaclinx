@@ -24,7 +24,7 @@ export default function FacturacionSRI() {
           </div>
           <h2 className="mt-4 text-[clamp(2.5rem,4vw,3.5rem)] font-bold leading-[1.1] tracking-[-0.02em] text-[var(--ln-ink)]">
             Facture{" "}
-            <span className="bg-gradient-to-r from-[var(--ln-teal)] to-[var(--ln-teal-strong)] bg-clip-text text-transparent lg:bg-none lg:bg-clip-border lg:text-[var(--ln-ink)]">
+            <span className="bg-gradient-to-r from-[var(--ln-teal)] to-[var(--ln-teal-strong)] bg-clip-text text-transparent">
               al SRI
             </span>{" "}
             sin salir de la consulta.
@@ -39,7 +39,7 @@ export default function FacturacionSRI() {
           <div className="relative w-full">
             <div
               aria-hidden
-              className="absolute -inset-x-6 -top-8 -z-10 h-36 rounded-full bg-[var(--ln-teal)]/15 blur-[60px] lg:hidden"
+              className="absolute -inset-x-6 -top-8 -z-10 h-36 rounded-full bg-[var(--ln-teal)]/15 blur-[60px]"
             ></div>
             <FacturaFrame />
           </div>
