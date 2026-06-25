@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import {
@@ -56,23 +56,70 @@ function BrandPanel() {
   );
 }
 
-/** Encabezado compacto de marca, solo móvil (<lg). */
-function BrandHeaderMobile() {
+/** Wordmark "Novaclinx" que aparece letra por letra al montar (solo donde se
+ *  use, p. ej. BrandBlockCompact). Respeta prefers-reduced-motion. */
+function AnimatedWordmark({ className = "" }: { className?: string }) {
+  const word = "Novaclinx";
+  const [shown, setShown] = useState(false);
+
+  useEffect(() => {
+    const reduce = window.matchMedia?.(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+    if (reduce) {
+      setShown(true);
+      return;
+    }
+    const t = window.setTimeout(() => setShown(true), 80);
+    return () => window.clearTimeout(t);
+  }, []);
+
   return (
-    <div className="lg:hidden flex flex-col items-center text-center mb-8">
-      <Image
-        src="/novaclinx-logo.png"
-        alt="Novaclinx"
-        width={48}
-        height={48}
-        priority
-        className="rounded-xl"
-      />
-      <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[#1A1A18] font-[family-name:var(--font-brand)]">
-        Novaclinx
-      </h1>
-      <p className="mt-2 text-sm text-[#5C5A54]">
-        De tu consulta a una nota lista para revisar.
+    <span className={className} aria-label={word}>
+      {word.split("").map((letter, i) => (
+        <span
+          key={i}
+          aria-hidden="true"
+          style={{ transitionDelay: `${i * 35}ms` }}
+          className={`inline-block transition-all duration-300 ease-out motion-reduce:transition-none motion-reduce:opacity-100 motion-reduce:translate-y-0 ${
+            shown ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1.5"
+          }`}
+        >
+          {letter}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/** Bloque de marca compacto, <lg (reemplazo de BrandPanel en pantallas
+ *  chicas/medianas). <768: franja completa arriba del formulario, logo +
+ *  nombre alineados a la izquierda. 768–1023: columna izquierda junto al
+ *  formulario, como en desktop pero compacto. */
+function BrandBlockCompact() {
+  const beneficios = [
+    "Cifrado de extremo a extremo",
+    "Notas clínicas con IA",
+    "Recetas con firma electrónica",
+  ];
+  return (
+    <div className="flex flex-col justify-center border-b border-[#E7E3DB] bg-[#F7F7F4] px-6 py-8 md:w-[42%] md:shrink-0 md:border-b-0 md:border-r md:px-10 md:py-12 lg:hidden">
+      <div className="flex items-center gap-3">
+        <Image
+          src="/novaclinx-logo.png"
+          alt=""
+          width={40}
+          height={40}
+          priority
+          className="h-10 w-10 shrink-0 rounded-xl"
+        />
+        <AnimatedWordmark className="text-2xl font-semibold tracking-tight text-[#1A1A18] font-[family-name:var(--font-brand)] md:text-3xl" />
+      </div>
+      <p className="mt-3 max-w-[28ch] text-sm leading-relaxed text-[#5C5A54] md:text-base">
+        No escriba más. Automatícelo.
+      </p>
+      <p className="mt-3 max-w-[30ch] text-xs leading-relaxed text-[#8A8780] md:text-sm">
+        {beneficios.join(" · ")}
       </p>
     </div>
   );
@@ -134,11 +181,11 @@ function LoginContent() {
 
   if (linkSent) {
     return (
-      <main className="min-h-[100dvh] flex bg-white">
+      <main className="min-h-[100dvh] flex flex-col bg-white md:flex-row font-[family-name:var(--font-manrope)] lg:font-[family-name:var(--font-sans)]">
         <BrandPanel />
+        <BrandBlockCompact />
         <div className="flex flex-1 flex-col justify-center px-6 py-12 lg:px-16">
           <div className="w-full max-w-sm mx-auto">
-            <BrandHeaderMobile />
             <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#0F766E]/[0.08]">
                 <MailCheck className="h-6 w-6 text-[#0F766E]" strokeWidth={1.75} />
@@ -157,13 +204,12 @@ function LoginContent() {
   }
 
   return (
-    <main className="min-h-[100dvh] flex bg-white">
+    <main className="min-h-[100dvh] flex flex-col bg-white md:flex-row font-[family-name:var(--font-manrope)] lg:font-[family-name:var(--font-sans)]">
       <BrandPanel />
+      <BrandBlockCompact />
 
       <div className="flex flex-1 flex-col justify-center px-6 py-12 lg:px-16">
         <div className="w-full max-w-sm mx-auto">
-          <BrandHeaderMobile />
-
           {/* Selector visual: ambos modos usan el mismo magic link */}
           <div className="mb-6 grid grid-cols-2 gap-1 rounded-xl border border-[#E7E3DB] bg-[#F7F7F4] p-1">
             {([
