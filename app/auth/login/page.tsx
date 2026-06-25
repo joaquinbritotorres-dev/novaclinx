@@ -108,17 +108,17 @@ function BrandBlockCompact() {
         <Image
           src="/novaclinx-logo.png"
           alt=""
-          width={40}
-          height={40}
+          width={48}
+          height={48}
           priority
-          className="h-10 w-10 shrink-0 rounded-xl"
+          className="h-12 w-12 shrink-0 rounded-xl md:h-14 md:w-14"
         />
-        <AnimatedWordmark className="text-2xl font-semibold tracking-tight text-[#1A1A18] font-[family-name:var(--font-brand)] md:text-3xl" />
+        <AnimatedWordmark className="text-3xl font-semibold tracking-tight text-[#1A1A18] font-[family-name:var(--font-brand)] md:text-4xl" />
       </div>
-      <p className="mt-3 max-w-[28ch] text-sm leading-relaxed text-[#5C5A54] md:text-base">
+      <p className="mt-3 max-w-[30ch] text-base leading-relaxed text-[#5C5A54] md:text-lg">
         No escriba más. Automatícelo.
       </p>
-      <p className="mt-3 max-w-[30ch] text-xs leading-relaxed text-[#8A8780] md:text-sm">
+      <p className="mt-3 max-w-[32ch] text-sm leading-relaxed text-[#8A8780] md:text-base">
         {beneficios.join(" · ")}
       </p>
     </div>
