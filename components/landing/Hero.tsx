@@ -24,7 +24,7 @@ export default function Hero() {
           </div>
           <h1 className="mt-6 max-w-[19ch] text-[clamp(2rem,4.5vw,4rem)] font-bold leading-[1.05] tracking-[-0.02em] text-[var(--ln-ink)] md:max-w-none">
             Su consultorio,{" "}
-            <span className="bg-gradient-to-r from-[var(--ln-teal)] to-[var(--ln-teal-strong)] bg-clip-text text-transparent lg:bg-none lg:bg-clip-border lg:text-[var(--ln-ink)]">
+            <span className="bg-gradient-to-r from-[var(--ln-teal)] to-[var(--ln-teal-strong)] bg-clip-text text-transparent">
               sin el papeleo
             </span>{" "}
             que le quita el día.
@@ -35,7 +35,7 @@ export default function Hero() {
           <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center md:mt-12 md:flex-col md:items-stretch lg:flex-row lg:items-center">
             <Link
               href="/auth/login"
-              className="inline-flex h-14 items-center justify-center rounded-xl bg-gradient-to-r from-[var(--ln-teal)] to-[var(--ln-teal-strong)] px-8 text-[17px] font-semibold text-white shadow-[0_10px_28px_-8px_rgba(15,118,110,0.5)] transition hover:shadow-[0_14px_32px_-8px_rgba(15,118,110,0.6)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ln-teal)]/40 focus-visible:ring-offset-2 lg:bg-none lg:bg-[var(--ln-teal)] lg:shadow-none lg:hover:bg-[var(--ln-teal-strong)] lg:hover:shadow-none"
+              className="inline-flex h-14 items-center justify-center rounded-xl bg-gradient-to-r from-[var(--ln-teal)] to-[var(--ln-teal-strong)] px-8 text-[17px] font-semibold text-white shadow-[0_10px_28px_-8px_rgba(15,118,110,0.5)] transition hover:shadow-[0_14px_32px_-8px_rgba(15,118,110,0.6)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ln-teal)]/40 focus-visible:ring-offset-2"
             >
               Crear mi cuenta
             </Link>

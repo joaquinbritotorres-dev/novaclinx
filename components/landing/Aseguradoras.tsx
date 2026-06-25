@@ -19,7 +19,7 @@ export default function Aseguradoras() {
           <div className="relative w-full max-w-[500px]">
             <div
               aria-hidden
-              className="absolute -inset-x-6 -top-8 -z-10 h-36 rounded-full bg-[var(--ln-teal)]/15 blur-[60px] lg:hidden"
+              className="absolute -inset-x-6 -top-8 -z-10 h-36 rounded-full bg-[var(--ln-teal)]/15 blur-[60px]"
             ></div>
             <ReclamacionFrame />
           </div>
@@ -32,7 +32,7 @@ export default function Aseguradoras() {
           </p>
           <h2 className="mt-4 text-[clamp(2.5rem,4vw,3.5rem)] font-bold leading-[1.1] tracking-[-0.02em] text-[var(--ln-ink)]">
             Deje de{" "}
-            <span className="bg-gradient-to-r from-[var(--ln-teal)] to-[var(--ln-teal-strong)] bg-clip-text text-transparent lg:bg-none lg:bg-clip-border lg:text-[var(--ln-ink)]">
+            <span className="bg-gradient-to-r from-[var(--ln-teal)] to-[var(--ln-teal-strong)] bg-clip-text text-transparent">
               perder dinero
             </span>{" "}
             en glosas.
