@@ -132,6 +132,7 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
         tamanoEnvase: tam,
         esPRN: false,
         esLiquido,
+        esInhalador: unidad === "inhalador",
       });
     }
 
@@ -145,6 +146,7 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
       tamanoEnvase: tam,
       esPRN: false,
       esLiquido,
+      esInhalador: unidad === "inhalador",
     });
   }, [pesoKg, dosisMgKg, dosisFija, concNum, tomas, tamano, esPorPeso, unidad, med.duracionDias]);
 

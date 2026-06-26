@@ -21,6 +21,23 @@ export function redondearMlJeringa(ml: number): number {
   return techo * 0.5;
 }
 
+/**
+ * Redondea el número de puffs/disparos de un inhalador al entero MÁS CERCANO,
+ * con piso de 1. Un inhalador dispensa dosis discretas: no existe medio puff.
+ *
+ * A diferencia de los líquidos (redondeo SIEMPRE hacia arriba por la jeringa,
+ * porque subdosificar un antibiótico es el peligro dominante), los inhaladores
+ * se redondean al MÁS CERCANO: sobredosificar un broncodilatador o corticoide
+ * inhalado tiene riesgo real (taquicardia, efectos adversos), simétrico al de
+ * subdosificar. El piso de 1 evita prescribir 0 puffs ante datos incoherentes.
+ *
+ * Ejemplos:
+ *   2.0 → 2   2.4 → 2   2.5 → 3   2.6 → 3   0.4 → 1   1.0 → 1
+ */
+export function redondearPuffEntero(puffs: number): number {
+  return Math.max(1, Math.round(puffs));
+}
+
 export interface EntradaCalculadora {
   /** Dosis directa por toma en mg (alternativa a dosisMgKgDia+pesoKg) */
   dosisPorTomaMg?: number;
@@ -40,6 +57,9 @@ export interface EntradaCalculadora {
   esPRN: boolean;
   /** true para líquidos: aplica redondeo al 0.5 mL superior en volumenOUnidadesPorToma */
   esLiquido?: boolean;
+  /** true para inhaladores: redondea los puffs al entero más cercano (mín. 1).
+   *  Excluyente con esLiquido; si ambos llegaran true, manda esLiquido. */
+  esInhalador?: boolean;
 }
 
 export interface ResultadoCalculadora {
@@ -89,6 +109,8 @@ export function calcularDispensacion(entrada: EntradaCalculadora): ResultadoCalc
   const rawVolumen = dosisPorTomaMg / entrada.concentracion;
   const volumenOUnidadesPorToma = entrada.esLiquido
     ? redondearMlJeringa(rawVolumen)
+    : entrada.esInhalador
+    ? redondearPuffEntero(rawVolumen)
     : rawVolumen;
   const totalNecesario = volumenOUnidadesPorToma * entrada.tomasPorDia * entrada.diasTratamiento;
   const numEnvases = Math.ceil(totalNecesario / entrada.tamanoEnvase);
