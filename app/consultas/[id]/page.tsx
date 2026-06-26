@@ -117,7 +117,7 @@ export default async function ConsultaPage({
   const { data: consulta } = await supabase
     .from("consultas")
     .select(
-      "id, fecha, nota_soap, indicaciones, signos_alarma, cie10_codigo, cie10_descripcion, seguimiento_plazo, seguimiento_motivo, paciente_id, pacientes(id, nombre, cedula, identificacion, tipo_identificacion, telefono)"
+      "id, fecha, nota_soap, indicaciones, signos_alarma, cie10_codigo, cie10_descripcion, seguimiento_plazo, seguimiento_motivo, paciente_id, pacientes(id, nombre, cedula, identificacion, tipo_identificacion, telefono, fecha_nacimiento, edad, pagador_tipo_identificacion, pagador_identificacion, pagador_nombre)"
     )
     .eq("id", id)
     .eq("medico_id", medico.id)
@@ -132,6 +132,11 @@ export default async function ConsultaPage({
     identificacion: string | null;
     tipo_identificacion: string | null;
     telefono: string | null;
+    fecha_nacimiento: string | null;
+    edad: number | null;
+    pagador_tipo_identificacion: string | null;
+    pagador_identificacion: string | null;
+    pagador_nombre: string | null;
   } | null;
 
   // Una consulta puede tener VARIAS facturas (reintentos tras rechazo/fallo).
@@ -155,6 +160,21 @@ export default async function ConsultaPage({
     .select("id, tipo_cobertura, aseguradoras(nombre)")
     .eq("paciente_id", paciente?.id ?? "")
     .is("deleted_at", null);
+
+  function calcularEsMenor(p: { fecha_nacimiento: string | null; edad: number | null } | null): boolean {
+    if (!p) return false;
+    if (p.fecha_nacimiento) {
+      const hoy = new Date();
+      const nac = new Date(p.fecha_nacimiento + "T00:00:00");
+      let years = hoy.getFullYear() - nac.getFullYear();
+      const m = hoy.getMonth() - nac.getMonth();
+      if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) years--;
+      return years < 18;
+    }
+    if (p.edad !== null && p.edad !== undefined) return p.edad < 18;
+    return false;
+  }
+  const esMenorDeEdad = calcularEsMenor(paciente);
 
   const secciones = parseSoapSections(consulta.nota_soap ?? "");
   const indicacionesParsed = parseIndicaciones(consulta.indicaciones);
@@ -340,6 +360,16 @@ export default async function ConsultaPage({
               consultaId={consulta.id}
               facturaExistente={factura}
               tieneIdentificacion={Boolean(paciente?.cedula || paciente?.identificacion)}
+              esMenorDeEdad={esMenorDeEdad}
+              pagadorInicial={
+                paciente
+                  ? {
+                      nombre: paciente.pagador_nombre,
+                      identificacion: paciente.pagador_identificacion,
+                      tipoIdentificacion: paciente.pagador_tipo_identificacion,
+                    }
+                  : null
+              }
             />
 
             {segurosPaciente && segurosPaciente.length > 0 && (

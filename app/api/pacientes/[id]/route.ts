@@ -79,6 +79,9 @@ export async function PATCH(
     condicion_cronica,
     proximo_control,
     consentimiento_datos,
+    pagador_tipo_identificacion,
+    pagador_identificacion,
+    pagador_nombre,
   } = body as Record<string, unknown>;
 
   if (typeof nombre !== "string" || !nombre.trim()) {
@@ -172,6 +175,10 @@ export async function PATCH(
           }
         : {};
 
+    const pagadorTipoFinal: TipoIdentificacion | null = isValidTipoId(pagador_tipo_identificacion)
+      ? pagador_tipo_identificacion
+      : null;
+
     const { error: updateError } = await supabase
       .from("pacientes")
       .update({
@@ -189,6 +196,9 @@ export async function PATCH(
         email: toTextOrNull(email),
         condicion_cronica: toTextOrNull(condicion_cronica),
         proximo_control: proximoControlFinal,
+        pagador_tipo_identificacion: pagadorTipoFinal,
+        pagador_identificacion: toTextOrNull(pagador_identificacion),
+        pagador_nombre: toTextOrNull(pagador_nombre),
       })
       .eq("id", id)
       .eq("medico_id", medico.id);

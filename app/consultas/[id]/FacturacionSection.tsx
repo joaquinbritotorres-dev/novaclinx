@@ -39,15 +39,31 @@ export default function FacturacionSection({
   consultaId,
   facturaExistente,
   tieneIdentificacion,
+  esMenorDeEdad,
+  pagadorInicial,
 }: {
   consultaId: string;
   facturaExistente: Factura | null;
   tieneIdentificacion: boolean;
+  esMenorDeEdad: boolean;
+  pagadorInicial: {
+    nombre: string | null;
+    identificacion: string | null;
+    tipoIdentificacion: string | null;
+  } | null;
 }) {
   const router = useRouter();
   const [monto, setMonto] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const [pagadorNombre, setPagadorNombre] = useState(pagadorInicial?.nombre ?? "");
+  const [pagadorIdentificacion, setPagadorIdentificacion] = useState(pagadorInicial?.identificacion ?? "");
+  const [pagadorTipo, setPagadorTipo] = useState(pagadorInicial?.tipoIdentificacion ?? "05");
+
+  const puedeFacturar = esMenorDeEdad
+    ? Boolean(pagadorNombre.trim() && pagadorIdentificacion.trim())
+    : tieneIdentificacion;
 
   const emitirFactura = async () => {
     const numMonto = parseFloat(monto);
@@ -64,7 +80,17 @@ export default function FacturacionSection({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ consulta_id: consultaId, monto: numMonto }),
+        body: JSON.stringify({
+          consulta_id: consultaId,
+          monto: numMonto,
+          ...(esMenorDeEdad
+            ? {
+                pagador_nombre: pagadorNombre,
+                pagador_identificacion: pagadorIdentificacion,
+                pagador_tipo_identificacion: pagadorTipo,
+              }
+            : {}),
+        }),
       });
 
       const data = await res.json();
@@ -90,10 +116,53 @@ export default function FacturacionSection({
   // Formulario de emisión / reintento (compartido).
   const formulario = (labelBoton: string) => (
     <div className="flex flex-col gap-3">
-      {!tieneIdentificacion && (
+      {!esMenorDeEdad && !tieneIdentificacion && (
         <p className="text-xs text-red-600 mb-1">
           El paciente no tiene cédula o RUC registrado. Edita el paciente para poder facturar.
         </p>
+      )}
+
+      {esMenorDeEdad && (
+        <div className="rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] p-3 space-y-2">
+          <p className="text-xs font-semibold text-[#1E40AF] uppercase tracking-wide">
+            Pagador · padre / madre / representante
+          </p>
+          <div>
+            <label className="block text-xs text-[#374151] mb-1">Tipo de identificación</label>
+            <select
+              value={pagadorTipo}
+              onChange={(e) => setPagadorTipo(e.target.value)}
+              disabled={isLoading}
+              className="w-full h-9 px-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:bg-gray-100"
+            >
+              <option value="05">Cédula</option>
+              <option value="04">RUC</option>
+              <option value="06">Pasaporte</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-[#374151] mb-1">N.° de identificación</label>
+            <input
+              type="text"
+              value={pagadorIdentificacion}
+              onChange={(e) => setPagadorIdentificacion(e.target.value)}
+              disabled={isLoading}
+              placeholder="1712345678"
+              className="w-full h-9 px-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:bg-gray-100"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-[#374151] mb-1">Nombre completo</label>
+            <input
+              type="text"
+              value={pagadorNombre}
+              onChange={(e) => setPagadorNombre(e.target.value)}
+              disabled={isLoading}
+              placeholder="Juan Pérez"
+              className="w-full h-9 px-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:bg-gray-100"
+            />
+          </div>
+        </div>
       )}
 
       <div className="flex gap-2">
@@ -106,13 +175,13 @@ export default function FacturacionSection({
             placeholder="Monto"
             value={monto}
             onChange={(e) => setMonto(e.target.value)}
-            disabled={!tieneIdentificacion || isLoading}
+            disabled={!puedeFacturar || isLoading}
             className="w-full h-11 pl-7 pr-3 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:bg-gray-100 disabled:text-gray-500"
           />
         </div>
         <button
           onClick={emitirFactura}
-          disabled={!tieneIdentificacion || isLoading || !monto}
+          disabled={!puedeFacturar || isLoading || !monto}
           className="h-11 px-4 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed inline-flex items-center justify-center min-w-[120px]"
         >
           {isLoading ? "Enviando..." : labelBoton}

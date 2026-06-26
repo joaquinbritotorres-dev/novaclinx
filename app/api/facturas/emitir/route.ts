@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   facturarConsulta,
   FacturacionBloqueadaError,
+  type Comprador,
 } from "@/lib/facturacion/facturar-consulta";
 
 // Estados de factura que BLOQUEAN un nuevo intento (ya facturada / en curso).
@@ -30,13 +31,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No pudimos completar la acción. Intenta de nuevo." }, { status: 400 });
   }
 
-  const { consulta_id, monto } = body as Record<string, unknown>;
+  const { consulta_id, monto, pagador_nombre, pagador_identificacion, pagador_tipo_identificacion } = body as Record<string, unknown>;
   if (typeof consulta_id !== "string" || !consulta_id.trim()) {
     return NextResponse.json({ error: "No pudimos completar la acción. Intenta de nuevo." }, { status: 400 });
   }
   const montoNum = typeof monto === "number" ? monto : parseFloat(String(monto));
   if (isNaN(montoNum) || montoNum <= 0 || montoNum > 9999) {
     return NextResponse.json({ error: "Monto inválido. Debe ser entre $0.01 y $9,999." }, { status: 400 });
+  }
+
+  const VALID_PAGADOR_TIPOS = new Set(["04", "05", "06"]);
+  const hayPagador = Boolean(pagador_nombre || pagador_identificacion || pagador_tipo_identificacion);
+  if (hayPagador) {
+    if (typeof pagador_nombre !== "string" || !pagador_nombre.trim()) {
+      return NextResponse.json({ error: "Nombre del pagador requerido." }, { status: 400 });
+    }
+    if (typeof pagador_identificacion !== "string" || !pagador_identificacion.trim()) {
+      return NextResponse.json({ error: "Identificación del pagador requerida." }, { status: 400 });
+    }
+    if (typeof pagador_tipo_identificacion !== "string" || !VALID_PAGADOR_TIPOS.has(pagador_tipo_identificacion)) {
+      return NextResponse.json({ error: "Tipo de identificación del pagador inválido." }, { status: 400 });
+    }
   }
 
   try {
@@ -78,22 +93,25 @@ export async function POST(request: NextRequest) {
     } | null;
 
     // 5) REGLA DE LA CÉDULA — fallar rápido con mensaje claro.
-    if (!paciente || !paciente.identificacion || !paciente.tipo_identificacion) {
-      return NextResponse.json(
-        { error: "El paciente no tiene cédula o RUC registrado. Edítalo antes de facturar." },
-        { status: 422 }
-      );
-    }
-    // "Consumidor final" (07) no es facturable: impide el reembolso del paciente
-    // ante su aseguradora y desde 2026 es irreversible ante el SRI.
-    if (paciente.tipo_identificacion === "07") {
-      return NextResponse.json(
-        {
-          error:
-            "Este paciente tiene tipo de identificación 'Consumidor final', que no es facturable. Edita el paciente y registra su cédula, RUC o pasaporte.",
-        },
-        { status: 422 }
-      );
+    // Si hay pagador (paciente pediátrico), se bypasea la cédula del paciente.
+    if (!hayPagador) {
+      if (!paciente || !paciente.identificacion || !paciente.tipo_identificacion) {
+        return NextResponse.json(
+          { error: "El paciente no tiene cédula o RUC registrado. Edítalo antes de facturar." },
+          { status: 422 }
+        );
+      }
+      // "Consumidor final" (07) no es facturable: impide el reembolso del paciente
+      // ante su aseguradora y desde 2026 es irreversible ante el SRI.
+      if (paciente.tipo_identificacion === "07") {
+        return NextResponse.json(
+          {
+            error:
+              "Este paciente tiene tipo de identificación 'Consumidor final', que no es facturable. Edita el paciente y registra su cédula, RUC o pasaporte.",
+          },
+          { status: 422 }
+        );
+      }
     }
 
     // 6) ANTI-DUPLICADOS. Puede haber varias filas por consulta (reintentos):
@@ -114,11 +132,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 7) Emitir vía el motor nuevo (verifica de nuevo el dueño con medicoIdEsperado).
+    // 7) Persistir pagador en el paciente (best-effort, no bloquea la emisión).
+    if (hayPagador && consulta.paciente_id) {
+      await supabase
+        .from("pacientes")
+        .update({
+          pagador_nombre: (pagador_nombre as string).trim(),
+          pagador_identificacion: (pagador_identificacion as string).trim(),
+          pagador_tipo_identificacion: pagador_tipo_identificacion as string,
+        })
+        .eq("id", consulta.paciente_id)
+        .eq("medico_id", medico.id);
+    }
+
+    // 8) Emitir vía el motor (verifica de nuevo el dueño con medicoIdEsperado).
+    const compradorOverride: Comprador | undefined = hayPagador
+      ? {
+          tipoIdentificacion: pagador_tipo_identificacion as "04" | "05" | "06",
+          identificacion: (pagador_identificacion as string).trim(),
+          razonSocial: (pagador_nombre as string).trim(),
+        }
+      : undefined;
+
     const resultado = await facturarConsulta({
       consultaId: consulta_id,
       monto: montoNum,
       medicoIdEsperado: medico.id,
+      ...(compradorOverride ? { compradorOverride } : {}),
     });
 
     // 8) Mapear estado → status HTTP.

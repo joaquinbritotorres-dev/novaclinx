@@ -65,7 +65,7 @@ export default async function PacientePerfilPage({
     supabase
       .from("pacientes")
       .select(
-        "id, nombre, edad, sexo, cedula, fecha_nacimiento, direccion, telefono, tipo_seguro, alergias, numero_historia, identificacion, tipo_identificacion, email, condicion_cronica, proximo_control, consentimiento_datos_at, consentimiento_datos_version"
+        "id, nombre, edad, sexo, cedula, fecha_nacimiento, direccion, telefono, tipo_seguro, alergias, numero_historia, identificacion, tipo_identificacion, email, condicion_cronica, proximo_control, consentimiento_datos_at, consentimiento_datos_version, pagador_tipo_identificacion, pagador_identificacion, pagador_nombre"
       )
       .eq("id", id)
       .eq("medico_id", medico.id)
@@ -323,6 +323,9 @@ export default async function PacientePerfilPage({
                 condicion_cronica: p.condicion_cronica,
                 proximo_control: p.proximo_control,
                 consentimiento_datos_at: p.consentimiento_datos_at,
+                pagador_tipo_identificacion: p.pagador_tipo_identificacion ?? null,
+                pagador_identificacion: p.pagador_identificacion ?? null,
+                pagador_nombre: p.pagador_nombre ?? null,
               }}
               tieneConsultas={(consultas?.length ?? 0) > 0}
             />

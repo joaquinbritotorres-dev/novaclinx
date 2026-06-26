@@ -37,6 +37,9 @@ export default function NuevoPacienteForm() {
   const [direccion, setDireccion] = useState("");
   const [telefono, setTelefono] = useState("");
   const [consentimientoDatos, setConsentimientoDatos] = useState(false);
+  const [pagadorTipo, setPagadorTipo] = useState("05");
+  const [pagadorIdentificacion, setPagadorIdentificacion] = useState("");
+  const [pagadorNombre, setPagadorNombre] = useState("");
 
   const [segurosState, setSegurosState] = useState<SegurosState>({
     seguros: [],
@@ -71,6 +74,13 @@ export default function NuevoPacienteForm() {
           direccion,
           telefono,
           consentimiento_datos: consentimientoDatos,
+          ...(esMenorNuevo
+            ? {
+                pagador_tipo_identificacion: pagadorTipo || null,
+                pagador_identificacion: pagadorIdentificacion || null,
+                pagador_nombre: pagadorNombre || null,
+              }
+            : {}),
         }),
       });
 
@@ -99,6 +109,21 @@ export default function NuevoPacienteForm() {
       setLoading(false);
     }
   }
+
+  function calcularEsMenorNuevo(): boolean {
+    if (fechaNacimiento) {
+      const hoy = new Date();
+      const nac = new Date(fechaNacimiento + "T00:00:00");
+      let years = hoy.getFullYear() - nac.getFullYear();
+      const m = hoy.getMonth() - nac.getMonth();
+      if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) years--;
+      return years < 18;
+    }
+    const edadNum = parseInt(edad, 10);
+    if (!isNaN(edadNum)) return edadNum < 18;
+    return false;
+  }
+  const esMenorNuevo = calcularEsMenorNuevo();
 
   const inputClass =
     "w-full h-11 px-3 bg-white border border-[#D1D5DB] rounded-lg text-sm text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:opacity-50";
@@ -321,6 +346,59 @@ export default function NuevoPacienteForm() {
               className={inputClass}
             />
           </div>
+
+          {/* Pagador — solo si el paciente es menor de edad */}
+          {esMenorNuevo && (
+            <>
+              <p className={sectionLabel}>Pagador · padre / madre / representante</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="pagador_tipo" className="block text-sm font-medium text-[#374151] mb-1">
+                    Tipo de identificación
+                  </label>
+                  <select
+                    id="pagador_tipo"
+                    value={pagadorTipo}
+                    onChange={(e) => setPagadorTipo(e.target.value)}
+                    disabled={loading}
+                    className={inputClass}
+                  >
+                    <option value="05">Cédula</option>
+                    <option value="04">RUC</option>
+                    <option value="06">Pasaporte</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="pagador_ident" className="block text-sm font-medium text-[#374151] mb-1">
+                    N.° de identificación
+                  </label>
+                  <input
+                    id="pagador_ident"
+                    type="text"
+                    value={pagadorIdentificacion}
+                    onChange={(e) => setPagadorIdentificacion(e.target.value)}
+                    disabled={loading}
+                    placeholder="1712345678"
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="pagador_nombre" className="block text-sm font-medium text-[#374151] mb-1">
+                  Nombre completo del pagador
+                </label>
+                <input
+                  id="pagador_nombre"
+                  type="text"
+                  value={pagadorNombre}
+                  onChange={(e) => setPagadorNombre(e.target.value)}
+                  disabled={loading}
+                  placeholder="Juan Pérez"
+                  className={inputClass}
+                />
+              </div>
+            </>
+          )}
 
           {/* Consentimiento LOPDP */}
           <p className={sectionLabel}>Protección de datos (LOPDP)</p>

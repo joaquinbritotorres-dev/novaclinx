@@ -25,6 +25,9 @@ interface PacienteEditable {
   condicion_cronica: string | null;
   proximo_control: string | null;
   consentimiento_datos_at: string | null;
+  pagador_tipo_identificacion: string | null;
+  pagador_identificacion: string | null;
+  pagador_nombre: string | null;
 }
 
 export default function EditarPacienteModal({
@@ -62,7 +65,25 @@ export default function EditarPacienteModal({
     email: paciente.email ?? "",
     condicion_cronica: paciente.condicion_cronica ?? "",
     proximo_control: paciente.proximo_control ?? "",
+    pagador_tipo_identificacion: paciente.pagador_tipo_identificacion ?? "05",
+    pagador_identificacion: paciente.pagador_identificacion ?? "",
+    pagador_nombre: paciente.pagador_nombre ?? "",
   });
+
+  function calcularEsMenorForm(fechaNac: string, edadStr: string): boolean {
+    if (fechaNac) {
+      const hoy = new Date();
+      const nac = new Date(fechaNac + "T00:00:00");
+      let years = hoy.getFullYear() - nac.getFullYear();
+      const m = hoy.getMonth() - nac.getMonth();
+      if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) years--;
+      return years < 18;
+    }
+    const edadNum = parseInt(edadStr, 10);
+    if (!isNaN(edadNum)) return edadNum < 18;
+    return false;
+  }
+  const esMenorModal = calcularEsMenorForm(form.fecha_nacimiento, form.edad);
 
   const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
@@ -357,6 +378,52 @@ export default function EditarPacienteModal({
                   />
                 </div>
               </div>
+
+              {/* Pagador (padre/madre) — solo en menores de edad */}
+              {esMenorModal && (
+                <div className="border-t border-[#E5E7EB] pt-4">
+                  <p className="text-xs font-semibold text-[#0F766E] uppercase tracking-wide mb-3">
+                    Pagador · padre / madre / representante
+                  </p>
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <label className={labelClass}>Tipo de identificación</label>
+                      <select
+                        value={form.pagador_tipo_identificacion}
+                        onChange={set("pagador_tipo_identificacion")}
+                        className={inputClass}
+                        disabled={isLoading}
+                      >
+                        <option value="05">Cédula</option>
+                        <option value="04">RUC</option>
+                        <option value="06">Pasaporte</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelClass}>N.° identificación</label>
+                      <input
+                        type="text"
+                        value={form.pagador_identificacion}
+                        onChange={set("pagador_identificacion")}
+                        className={inputClass}
+                        disabled={isLoading}
+                        placeholder="1712345678"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Nombre completo</label>
+                    <input
+                      type="text"
+                      value={form.pagador_nombre}
+                      onChange={set("pagador_nombre")}
+                      className={inputClass}
+                      disabled={isLoading}
+                      placeholder="Juan Pérez"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Consentimiento LOPDP — solo si aún no está registrado */}
               {!paciente.consentimiento_datos_at && (

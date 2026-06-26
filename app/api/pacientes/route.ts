@@ -75,6 +75,9 @@ export async function POST(request: NextRequest) {
     condicion_cronica,
     proximo_control,
     consentimiento_datos,
+    pagador_tipo_identificacion,
+    pagador_identificacion,
+    pagador_nombre,
   } = body as Record<string, unknown>;
 
   if (typeof nombre !== "string" || !nombre.trim()) {
@@ -162,6 +165,10 @@ export async function POST(request: NextRequest) {
     const seq = String((count ?? 0) + 1).padStart(4, "0");
     const numero_historia = `HC-${new Date().getFullYear()}-${seq}`;
 
+    const pagadorTipoFinal: TipoIdentificacion | null = isValidTipoId(pagador_tipo_identificacion)
+      ? pagador_tipo_identificacion
+      : null;
+
     const { data: paciente, error: insertError } = await supabase
       .from("pacientes")
       .insert({
@@ -178,6 +185,9 @@ export async function POST(request: NextRequest) {
         alergias: toTextOrNull(alergias),
         condicion_cronica: toTextOrNull(condicion_cronica),
         proximo_control: proximoControlFinal,
+        pagador_tipo_identificacion: pagadorTipoFinal,
+        pagador_identificacion: toTextOrNull(pagador_identificacion),
+        pagador_nombre: toTextOrNull(pagador_nombre),
         ...(consentimiento_datos === true
           ? {
               consentimiento_datos_at: new Date().toISOString(),
