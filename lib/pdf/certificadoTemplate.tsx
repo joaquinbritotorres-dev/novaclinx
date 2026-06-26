@@ -35,7 +35,7 @@ export function CertificadoTemplate(props: CertificadoTemplateProps) {
     reposo, reposoDias, reposoInicio,
     mostrarDiagnostico, observaciones,
     medicoNombre, medicoEspecialidad, medicoRegistroAcess, medicoRegistroSenescyt,
-    medicoDireccion, medicoTelefono, medicoRuc,
+    medicoDireccion, medicoTelefono, medicoRuc, medicoLogoBase64,
     firmado, firmante, fechaFirma,
   } = props;
 
@@ -78,6 +78,7 @@ export function CertificadoTemplate(props: CertificadoTemplateProps) {
           medicoDireccion={medicoDireccion}
           medicoTelefono={medicoTelefono}
           medicoRuc={medicoRuc}
+          medicoLogoBase64={medicoLogoBase64}
           fecha={fecha}
         />
 

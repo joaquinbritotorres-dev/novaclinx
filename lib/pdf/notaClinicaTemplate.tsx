@@ -19,7 +19,7 @@ export function NotaClinicaTemplate(props: NotaTemplateProps) {
     fechaISO, tipoConsulta, notaSoap, cie10Codigo, cie10Descripcion,
     seguimientoPlazo, seguimientoMotivo,
     medicoNombre, medicoEspecialidad, medicoRegistroAcess, medicoRegistroSenescyt,
-    medicoDireccion, medicoTelefono, medicoRuc,
+    medicoDireccion, medicoTelefono, medicoRuc, medicoLogoBase64,
     firmado, firmante, fechaFirma,
   } = props;
 
@@ -36,7 +36,7 @@ export function NotaClinicaTemplate(props: NotaTemplateProps) {
 
   const encabezadoProps = {
     medicoNombre, medicoEspecialidad, medicoRegistroAcess, medicoRegistroSenescyt,
-    medicoDireccion, medicoTelefono, medicoRuc, fecha,
+    medicoDireccion, medicoTelefono, medicoRuc, fecha, medicoLogoBase64,
   };
 
   return (

@@ -30,6 +30,7 @@ export interface NotaTemplateProps {
   medicoDireccion: string | null;
   medicoTelefono: string | null;
   medicoRuc: string | null;
+  medicoLogoBase64?: string | null;
   firmado?: boolean;
   firmante?: string;
   fechaFirma?: string;
@@ -57,6 +58,7 @@ export interface CertificadoTemplateProps {
   medicoDireccion: string | null;
   medicoTelefono: string | null;
   medicoRuc: string | null;
+  medicoLogoBase64?: string | null;
   pacienteNombre: string;
   pacienteCedula: string | null;
   pacienteFechaNacimiento: string | null;

@@ -1,4 +1,4 @@
-import { Text, View } from "@react-pdf/renderer";
+import { Text, View, Image } from "@react-pdf/renderer";
 import { S } from "./styles";
 import { formatEspecialidad } from "./helpers";
 
@@ -10,18 +10,24 @@ interface EncabezadoProps {
   medicoDireccion: string | null;
   medicoTelefono: string | null;
   medicoRuc: string | null;
+  medicoLogoBase64?: string | null;
   fecha: string;
 }
 
 export function Encabezado({
   medicoNombre, medicoEspecialidad, medicoRegistroAcess, medicoRegistroSenescyt,
-  medicoDireccion, medicoTelefono, medicoRuc, fecha,
+  medicoDireccion, medicoTelefono, medicoRuc, medicoLogoBase64, fecha,
 }: EncabezadoProps) {
   const esp = formatEspecialidad(medicoEspecialidad);
   return (
     <>
       <View style={S.hdrStripe} />
       <View style={S.hdrRow}>
+        {medicoLogoBase64 ? (
+          <View style={S.hdrLogoCol}>
+            <Image src={medicoLogoBase64} style={S.hdrLogoImg} />
+          </View>
+        ) : null}
         <View style={S.hdrLeft}>
           <Text style={S.hdrName}>{medicoNombre}</Text>
           {esp ? <Text style={S.hdrEsp}>{esp}</Text> : null}

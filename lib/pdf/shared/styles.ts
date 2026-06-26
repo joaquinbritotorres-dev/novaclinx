@@ -14,7 +14,9 @@ export const S = StyleSheet.create({
 
   // ── Header ──
   hdrStripe: { height: 3, backgroundColor: "#0F766E", marginBottom: 8 },
-  hdrRow: { flexDirection: "row", marginBottom: 6 },
+  hdrRow: { flexDirection: "row", marginBottom: 6, alignItems: "center" },
+  hdrLogoCol: { width: 68, marginRight: 10, alignItems: "center", justifyContent: "center" },
+  hdrLogoImg: { maxWidth: 64, maxHeight: 56 },
   hdrLeft: { flex: 3, paddingRight: 12 },
   hdrRight: { flex: 2, alignItems: "flex-end" },
   hdrName: {

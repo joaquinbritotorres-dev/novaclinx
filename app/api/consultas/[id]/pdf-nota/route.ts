@@ -6,6 +6,7 @@ import { requireAuth } from "@/lib/auth-guard";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { NotaClinicaTemplate } from "@/lib/pdf/notaClinicaTemplate";
 import { firmarPdf } from "@/lib/firma/firmar";
+import { getLogoBase64 } from "@/lib/pdf/getLogoBase64";
 
 function parseJsonArray(raw: string | null): string[] | null {
   if (!raw) return null;
@@ -31,7 +32,7 @@ export async function GET(
   const { data: medico } = await supabase
     .from("medicos")
     .select(
-      "id, nombre, especialidad, registro_acess, registro_senescyt, direccion_consultorio, telefono_consultorio, ruc, firma_object_key, firma_titular"
+      "id, nombre, especialidad, registro_acess, registro_senescyt, direccion_consultorio, telefono_consultorio, ruc, firma_object_key, firma_titular, logo_object_key"
     )
     .eq("user_id", user.id)
     .maybeSingle();
@@ -75,6 +76,8 @@ export async function GET(
   const indicaciones = parseJsonArray(consulta.indicaciones);
   const signosAlarma = parseJsonArray(consulta.signos_alarma);
 
+  const medicoLogoBase64 = await getLogoBase64(medico.logo_object_key ?? null);
+
   const firmar = request.nextUrl.searchParams.get("firmar") === "1";
   const fechaFirmaHoy = new Date().toLocaleDateString("es-EC", {
     day: "2-digit",
@@ -91,6 +94,7 @@ export async function GET(
     medicoDireccion: medico.direccion_consultorio ?? null,
     medicoTelefono: medico.telefono_consultorio ?? null,
     medicoRuc: medico.ruc ?? null,
+    medicoLogoBase64,
     pacienteNombre: paciente?.nombre ?? "Paciente",
     pacienteCedula: paciente?.identificacion || paciente?.cedula || null,
     pacienteFechaNacimiento: paciente?.fecha_nacimiento ?? null,

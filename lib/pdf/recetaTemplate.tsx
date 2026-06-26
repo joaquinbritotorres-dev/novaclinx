@@ -33,7 +33,7 @@ export function RecetaTemplate(props: NotaTemplateProps) {
     pacienteAlergias, fechaISO, notaSoap, cie10Codigo, cie10Descripcion,
     medicamentos, indicaciones, signosAlarma,
     medicoNombre, medicoEspecialidad, medicoRegistroAcess, medicoRegistroSenescyt,
-    medicoDireccion, medicoTelefono, medicoRuc,
+    medicoDireccion, medicoTelefono, medicoRuc, medicoLogoBase64,
     firmado, firmante, fechaFirma,
   } = props;
 
@@ -53,7 +53,7 @@ export function RecetaTemplate(props: NotaTemplateProps) {
 
   const encabezadoProps = {
     medicoNombre, medicoEspecialidad, medicoRegistroAcess, medicoRegistroSenescyt,
-    medicoDireccion, medicoTelefono, medicoRuc, fecha,
+    medicoDireccion, medicoTelefono, medicoRuc, fecha, medicoLogoBase64,
   };
 
   return (
