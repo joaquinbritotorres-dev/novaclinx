@@ -62,6 +62,7 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
   );
   const [tomas, setTomas] = useState(String(tomasIniciales));
   const [tamano, setTamano] = useState(String(sizesDefault[sizesDefault.length - 1]));
+  const [esPorPeso, setEsPorPeso] = useState(() => dosisParsed.esPorPeso);
   const [confirmadoLocal, setConfirmadoLocal] = useState(false);
   const [cantidadTexto, setCantidadTexto] = useState("");
 
@@ -71,7 +72,7 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
     const tam = parseFloat(tamano);
     if (!conc || conc <= 0 || !tom || !tam || tam <= 0) return null;
 
-    if (dosisParsed.esPorPeso) {
+    if (esPorPeso) {
       const peso = parseFloat(pesoKg);
       const dkg = parseFloat(dosisMgKg);
       if (!peso || peso <= 0 || !dkg || dkg <= 0) return null;
@@ -96,7 +97,7 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
       tamanoEnvase: tam,
       esPRN: false,
     });
-  }, [pesoKg, dosisMgKg, dosisFija, concNum, tomas, tamano, dosisParsed, med.duracionDias]);
+  }, [pesoKg, dosisMgKg, dosisFija, concNum, tomas, tamano, esPorPeso, med.duracionDias]);
 
   function handleConfirmar() {
     if (!resultado?.ok) return;
@@ -173,9 +174,40 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
         </p>
       </div>
 
+      {/* Tipo de cálculo — el médico puede cambiar lo que infirió la IA */}
+      <div>
+        <span className="text-xs font-medium text-[#374151]">Tipo de dosis</span>
+        <div className="mt-1 inline-flex items-center gap-0.5 rounded-lg bg-[#F1F5F9] p-0.5">
+          <button
+            type="button"
+            onClick={() => setEsPorPeso(true)}
+            disabled={disabled}
+            className={`h-8 rounded-md px-3 text-xs font-medium transition-colors disabled:opacity-50 ${
+              esPorPeso
+                ? "bg-white text-[#0F766E] shadow-sm"
+                : "text-[#64748B] hover:text-[#0F172A]"
+            }`}
+          >
+            Por peso (mg/kg/día)
+          </button>
+          <button
+            type="button"
+            onClick={() => setEsPorPeso(false)}
+            disabled={disabled}
+            className={`h-8 rounded-md px-3 text-xs font-medium transition-colors disabled:opacity-50 ${
+              !esPorPeso
+                ? "bg-white text-[#0F766E] shadow-sm"
+                : "text-[#64748B] hover:text-[#0F172A]"
+            }`}
+          >
+            Dosis fija por toma
+          </button>
+        </div>
+      </div>
+
       {/* Dose inputs */}
       <div className="grid grid-cols-2 gap-3">
-        {dosisParsed.esPorPeso && (
+        {esPorPeso && (
           <>
             <Field label="Peso del paciente (kg)">
               <input
@@ -202,7 +234,7 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
             </Field>
           </>
         )}
-        {!dosisParsed.esPorPeso && (
+        {!esPorPeso && (
           <Field label="Dosis por toma (mg)">
             <input
               type="number"
@@ -296,7 +328,7 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
       )}
       {!listo && (
         <p className="text-xs text-[#94A3B8]">
-          {dosisParsed.esPorPeso
+          {esPorPeso
             ? "Ingresa peso y dosis para calcular."
             : "Ingresa dosis para calcular."}
         </p>
