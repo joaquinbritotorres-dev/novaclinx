@@ -1,3 +1,5 @@
+import type { UnidadDispensacion } from "./tipos";
+
 /** Parses concentración string to mg/mL (liquid) or mg/unit (solid).
  *  "250 mg/5 mL" → 50 | "100 mg/mL" → 100 | "500 mg" → 500 */
 export function parsearConcentracionMgMl(concentracion: string): number | null {
@@ -58,15 +60,21 @@ function toLetras(n: number): string {
 }
 
 /** Formats quantity for prescription (AM 00031-2020 format).
- *  Liquid: "2 (dos) frascos de 150 mL" | Solid: "30 (treinta) comprimidos" */
+ *  Liquid:    "2 (dos) frascos de 150 mL"
+ *  Solid:     "30 (treinta) comprimidos"
+ *  Inhalador: "1 (un) inhalador de 200 dosis" */
 export function buildCantidadTexto(
   numEnvases: number,
   tamano: number,
-  esLiquido: boolean
+  unidad: UnidadDispensacion
 ): string {
-  if (esLiquido) {
+  if (unidad === "liquido") {
     const l = toLetras(numEnvases);
     return `${numEnvases} (${l}) frasco${numEnvases > 1 ? "s" : ""} de ${tamano} mL`;
+  }
+  if (unidad === "inhalador") {
+    const l = toLetras(numEnvases);
+    return `${numEnvases} (${l}) inhalador${numEnvases > 1 ? "es" : ""} de ${tamano} dosis`;
   }
   const total = numEnvases * tamano;
   const l = toLetras(total);

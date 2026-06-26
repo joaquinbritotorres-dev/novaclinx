@@ -1,3 +1,12 @@
+/**
+ * Unidad de dispensación elegida por el médico (manda sobre la inferencia de la
+ * IA). Determina la etiqueta y la math de presentación, no la dosis en mg:
+ *  - "liquido":    jarabe/suspensión → mL, redondeo a 0.5 de jeringa.
+ *  - "comprimido": tableta/cápsula   → comprimidos (math entera).
+ *  - "inhalador":  aerosol/spray     → puffs (misma math que sólido, sin redondeo).
+ */
+export type UnidadDispensacion = "liquido" | "comprimido" | "inhalador";
+
 export interface MedicamentoPropuesto {
   dci: string;
   nombreComercial?: string | null;

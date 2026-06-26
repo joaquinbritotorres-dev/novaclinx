@@ -2,6 +2,8 @@
 // prompts. Ningún corchete ni rango sin resolver puede llegar a una receta o
 // certificado; la dosis confirmada se imprime en números y letras (AM 00031-2020).
 
+import type { UnidadDispensacion } from "./tipos";
+
 // ─── Detección de placeholders / rangos sin resolver ──────────────────────────
 
 const CORCHETE_RE = /\[[^\]]*\]/g;
@@ -125,9 +127,12 @@ export function frecuenciaEnPalabras(frecuencia: string): string {
 
 export interface DosisConfirmada {
   dosisPorTomaMg: number;
-  /** mL/toma (líquido) o comprimidos/toma (sólido) */
+  /** mL/toma (líquido), comprimidos/toma (sólido) o puffs/toma (inhalador) */
   volumenOUnidadesPorToma: number;
   esLiquido: boolean;
+  /** Unidad de dispensación elegida por el médico. Si se omite, se deriva de
+   *  esLiquido (retrocompatibilidad: true→líquido, false→comprimido). */
+  unidad?: UnidadDispensacion;
   /** Texto de concentración tal cual ("250 mg/5 mL") */
   concentracion: string;
   formaFarmaceutica: string;
@@ -135,22 +140,36 @@ export interface DosisConfirmada {
 }
 
 /**
- * Formato objetivo AM 00031-2020:
- * "550 mg (quinientos cincuenta miligramos) = 11 mL de suspensión 250 mg/5 mL, cada 12 horas"
+ * Formato objetivo AM 00031-2020 (números y letras):
+ *  - líquido:    "550 mg (quinientos cincuenta miligramos) = 11 mL de suspensión 250 mg/5 mL, cada 12 horas"
+ *  - sólido:     "500 mg (quinientos miligramos) = 1 comprimido de 500 mg, cada 8 horas"
+ *  - inhalador:  "2 puffs (dos puffs) de aerosol 100 mcg/dosis, cada 6 horas"
+ *
+ * Para inhaladores la dosis se cuenta en puffs (no en mg): las dosis suelen ser
+ * sub-miligramo (mcg), así que el número y letras se aplica a los puffs, que es
+ * lo que el paciente administra.
  */
 export function formatearDosisConfirmada(d: DosisConfirmada): string {
+  const unidad: UnidadDispensacion = d.unidad ?? (d.esLiquido ? "liquido" : "comprimido");
+  const freq = frecuenciaEnPalabras(d.frecuencia);
+  const cant = Math.round(d.volumenOUnidadesPorToma * 100) / 100;
+
+  if (unidad === "inhalador") {
+    const cantEntero = Number.isInteger(cant) ? cant : Math.round(cant);
+    // Apócope: "uno" → "un" antes de sustantivo masculino ("un puff").
+    const letrasCant = cantEntero === 1 ? "un" : numeroALetras(cantEntero);
+    const palabra = cant === 1 ? "puff" : "puffs";
+    return `${cant} ${palabra} (${letrasCant} ${palabra}) de ${d.formaFarmaceutica} ${d.concentracion}, ${freq}`;
+  }
+
   const mg = Math.round(d.dosisPorTomaMg * 100) / 100;
   const mgEntero = Number.isInteger(mg) ? mg : Math.round(mg);
   const letras = numeroALetras(mgEntero);
   const cabeza = `${mg} mg (${letras} miligramos)`;
 
-  const freq = frecuenciaEnPalabras(d.frecuencia);
-
-  if (d.esLiquido) {
-    const ml = Math.round(d.volumenOUnidadesPorToma * 100) / 100;
-    return `${cabeza} = ${ml} mL de ${d.formaFarmaceutica} ${d.concentracion}, ${freq}`;
+  if (unidad === "liquido") {
+    return `${cabeza} = ${cant} mL de ${d.formaFarmaceutica} ${d.concentracion}, ${freq}`;
   }
-  const u = Math.round(d.volumenOUnidadesPorToma * 100) / 100;
-  const unidad = u === 1 ? "comprimido" : "comprimidos";
-  return `${cabeza} = ${u} ${unidad} de ${d.concentracion}, ${freq}`;
+  const u = cant === 1 ? "comprimido" : "comprimidos";
+  return `${cabeza} = ${cant} ${u} de ${d.concentracion}, ${freq}`;
 }

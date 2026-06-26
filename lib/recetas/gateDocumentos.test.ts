@@ -166,4 +166,53 @@ describe("formatearDosisConfirmada (números y letras AM 00031-2020)", () => {
       })
     ).toBe("500 mg (quinientos miligramos) = 1 comprimido de 500 mg, cada 8 horas");
   });
+
+  it("inhalador — puffs en números y letras, sin cabeza de mg sub-entera", () => {
+    expect(
+      formatearDosisConfirmada({
+        dosisPorTomaMg: 0.2,
+        volumenOUnidadesPorToma: 2,
+        esLiquido: false,
+        unidad: "inhalador",
+        concentracion: "100 mcg/dosis",
+        formaFarmaceutica: "aerosol",
+        frecuencia: "c/6h",
+      })
+    ).toBe("2 puffs (dos puffs) de aerosol 100 mcg/dosis, cada 6 horas");
+  });
+
+  it("inhalador — 1 puff usa singular", () => {
+    expect(
+      formatearDosisConfirmada({
+        dosisPorTomaMg: 0.1,
+        volumenOUnidadesPorToma: 1,
+        esLiquido: false,
+        unidad: "inhalador",
+        concentracion: "100 mcg/dosis",
+        formaFarmaceutica: "aerosol",
+        frecuencia: "c/12h",
+      })
+    ).toBe("1 puff (un puff) de aerosol 100 mcg/dosis, cada 12 horas");
+  });
+
+  it("unidad explícita 'comprimido' coincide con el fallback de esLiquido=false", () => {
+    const conUnidad = formatearDosisConfirmada({
+      dosisPorTomaMg: 500,
+      volumenOUnidadesPorToma: 1,
+      esLiquido: false,
+      unidad: "comprimido",
+      concentracion: "500 mg",
+      formaFarmaceutica: "comprimido",
+      frecuencia: "c/8h",
+    });
+    const sinUnidad = formatearDosisConfirmada({
+      dosisPorTomaMg: 500,
+      volumenOUnidadesPorToma: 1,
+      esLiquido: false,
+      concentracion: "500 mg",
+      formaFarmaceutica: "comprimido",
+      frecuencia: "c/8h",
+    });
+    expect(conUnidad).toBe(sinUnidad);
+  });
 });
