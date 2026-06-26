@@ -84,6 +84,7 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
         diasTratamiento: med.duracionDias,
         tamanoEnvase: tam,
         esPRN: false,
+        esLiquido,
       });
     }
 
@@ -96,6 +97,7 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
       diasTratamiento: med.duracionDias,
       tamanoEnvase: tam,
       esPRN: false,
+      esLiquido,
     });
   }, [pesoKg, dosisMgKg, dosisFija, concNum, tomas, tamano, esPorPeso, med.duracionDias]);
 
