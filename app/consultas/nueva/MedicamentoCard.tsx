@@ -4,16 +4,36 @@ import { useState, useMemo } from "react";
 import type { MedicamentoPropuesto, Medicamento, UnidadDispensacion } from "@/lib/recetas/tipos";
 import { calcularDispensacion } from "@/lib/recetas/calcularDispensacion";
 import {
-  parsearConcentracionMgMl,
   parsearTomasPorDia,
   parsearDosis,
   buildCantidadTexto,
 } from "@/lib/recetas/parsearDosis";
 import { formatearDosisConfirmada } from "@/lib/recetas/gateDocumentos";
+import {
+  type UnidadConcentracion,
+  type UnidadDosis,
+  type UnidadDosisPeso,
+  CONCENTRACION_POR_FORMA,
+  DOSIS_OPCIONES,
+  DOSIS_PESO_OPCIONES,
+  normalizarConcentracion,
+  normalizarDosis,
+  normalizarDosisPeso,
+  parsearUnidadConcentracion,
+  parsearValorConcentracion,
+  parsearUnidadDosis,
+  parsearValorDosis,
+  parsearUnidadDosisPeso,
+} from "@/lib/recetas/unidades";
 
 const INPUT =
   "w-full h-9 px-2 bg-white border border-[#D1D5DB] rounded-lg text-sm " +
   "focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:opacity-50";
+
+const SELECT =
+  "h-9 px-2 bg-white border border-[#D1D5DB] rounded-lg text-sm shrink-0 " +
+  "focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:opacity-50 " +
+  "aria-invalid:border-[#DC2626] aria-invalid:ring-1 aria-invalid:ring-[#DC2626]/40";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -71,12 +91,20 @@ function extraerPesoKg(dosis: string, indicacion?: string | null): string {
 
 export default function MedicamentoCard({ med, index, onConfirmar, disabled }: Props) {
   const dosisParsed = useMemo(() => parsearDosis(med.dosis), [med.dosis]);
-  const concInicial = useMemo(() => parsearConcentracionMgMl(med.concentracion), [med.concentracion]);
   const tomasIniciales = useMemo(() => parsearTomasPorDia(med.frecuencia), [med.frecuencia]);
   const unidadInicial = useMemo(
     () => inferirUnidad(med.concentracion, med.formaFarmaceutica),
     [med.concentracion, med.formaFarmaceutica]
   );
+
+  // Defaults de unidad y valor crudo desde el string de la IA. Si no se reconoce
+  // la unidad, queda null y "Confirmar" se bloquea hasta que el médico elija
+  // (nunca se asume mg).
+  const concValorInicial   = useMemo(() => parsearValorConcentracion(med.concentracion), [med.concentracion]);
+  const unidadConcInicial  = useMemo(() => parsearUnidadConcentracion(med.concentracion), [med.concentracion]);
+  const dosisValorInicial  = useMemo(() => parsearValorDosis(med.dosis), [med.dosis]);
+  const unidadDosisInicial = useMemo(() => parsearUnidadDosis(med.dosis), [med.dosis]);
+  const unidadDosisPesoInicial = useMemo(() => parsearUnidadDosisPeso(med.dosis), [med.dosis]);
 
   const [unidad, setUnidad] = useState<UnidadDispensacion>(unidadInicial);
   const esLiquido = unidad === "liquido";
@@ -87,11 +115,23 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
     dosisParsed.dosisMgKgDia !== null ? String(dosisParsed.dosisMgKgDia) : ""
   );
   const [dosisFija, setDosisFija] = useState(
-    dosisParsed.dosisPorTomaMg !== null ? String(dosisParsed.dosisPorTomaMg) : ""
+    dosisValorInicial !== null ? String(dosisValorInicial) : ""
   );
   const [concNum, setConcNum] = useState(
-    concInicial !== null ? String(concInicial) : ""
+    concValorInicial !== null ? String(concValorInicial) : ""
   );
+
+  // Unidades elegidas por el médico (default: lo parseado de la IA, o null).
+  const [unidadConc, setUnidadConc] = useState<UnidadConcentracion | null>(
+    unidadConcInicial && CONCENTRACION_POR_FORMA[unidadInicial].includes(unidadConcInicial)
+      ? unidadConcInicial
+      : null
+  );
+  const [unidadDosis, setUnidadDosis] = useState<UnidadDosis | null>(unidadDosisInicial);
+  const [unidadDosisPeso, setUnidadDosisPeso] = useState<UnidadDosisPeso | null>(
+    unidadDosisPesoInicial ?? "mg/kg/día"
+  );
+
   const [tomas, setTomas] = useState(String(tomasIniciales));
   const [tamano, setTamano] = useState(
     () => String(sizesParaUnidad(unidadInicial)[sizesParaUnidad(unidadInicial).length - 1])
@@ -99,17 +139,24 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
   const [esPorPeso, setEsPorPeso] = useState(() => dosisParsed.esPorPeso);
   const [confirmadoLocal, setConfirmadoLocal] = useState(false);
   const [cantidadTexto, setCantidadTexto] = useState("");
+  // Concentración canónica (número + unidad elegidos por el médico): único punto
+  // de verdad que va a pantalla, DB y PDF.
+  const [concentracionConfirmada, setConcentracionConfirmada] = useState("");
 
-  // Al cambiar la unidad, el médico manda sobre la IA. Reseteamos el tamaño de
-  // envase al default de esa unidad (un frasco de 150 mL no aplica a un inhalador).
+  // Opciones de unidad de concentración para la forma actual.
+  const opcionesConc = CONCENTRACION_POR_FORMA[unidad];
+
+  // Al cambiar la forma, el médico manda sobre la IA. Reseteamos el tamaño de
+  // envase y la unidad de concentración (un frasco de 150 mL o "mg/mL" no aplican
+  // a un inhalador): el médico vuelve a elegir la unidad — nunca se asume.
   function cambiarUnidad(u: UnidadDispensacion) {
     setUnidad(u);
     const sizes = sizesParaUnidad(u);
     setTamano(String(sizes[sizes.length - 1]));
+    setUnidadConc(null);
   }
 
-  // Etiquetas dependientes de la unidad (display + inputs).
-  const labelConc = unidad === "liquido" ? "mg/mL" : unidad === "inhalador" ? "mg/dosis" : "mg/unidad";
+  // Etiquetas de dispensación (la concentración y la dosis llevan su selector).
   const labelEnvase = unidad === "liquido" ? "mL" : unidad === "inhalador" ? "dosis" : "unidades";
   const labelTotal = unidad === "liquido" ? "mL" : unidad === "inhalador" ? "dosis" : "u";
 
@@ -119,14 +166,20 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
     const tam = parseFloat(tamano);
     if (!conc || conc <= 0 || !tom || !tam || tam <= 0) return null;
 
+    // Sin unidad elegida no se calcula: jamás se asume una unidad base.
+    if (unidadConc === null) return null;
+    const concBase = normalizarConcentracion(conc, unidadConc);
+
     if (esPorPeso) {
       const peso = parseFloat(pesoKg);
       const dkg = parseFloat(dosisMgKg);
       if (!peso || peso <= 0 || !dkg || dkg <= 0) return null;
+      if (unidadDosisPeso === null) return null;
+      const dkgBase = normalizarDosisPeso(dkg, unidadDosisPeso);
       return calcularDispensacion({
-        dosisMgKgDia: dkg,
+        dosisMgKgDia: dkgBase,
         pesoKg: peso,
-        concentracion: conc,
+        concentracion: concBase,
         tomasPorDia: tom,
         diasTratamiento: med.duracionDias,
         tamanoEnvase: tam,
@@ -138,9 +191,11 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
 
     const df = parseFloat(dosisFija);
     if (!df || df <= 0) return null;
+    if (unidadDosis === null) return null;
+    const dfBase = normalizarDosis(df, unidadDosis);
     return calcularDispensacion({
-      dosisPorTomaMg: df,
-      concentracion: conc,
+      dosisPorTomaMg: dfBase,
+      concentracion: concBase,
       tomasPorDia: tom,
       diasTratamiento: med.duracionDias,
       tamanoEnvase: tam,
@@ -148,13 +203,18 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
       esLiquido,
       esInhalador: unidad === "inhalador",
     });
-  }, [pesoKg, dosisMgKg, dosisFija, concNum, tomas, tamano, esPorPeso, unidad, med.duracionDias]);
+  }, [pesoKg, dosisMgKg, dosisFija, concNum, tomas, tamano, esPorPeso, unidad,
+      unidadConc, unidadDosis, unidadDosisPeso, esLiquido, med.duracionDias]);
 
   function handleConfirmar() {
-    if (!resultado?.ok) return;
+    if (!resultado?.ok || unidadConc === null) return;
     const r = resultado.resultado;
     const tam = parseFloat(tamano);
     const cantidad = buildCantidadTexto(r.numEnvases, tam, unidad);
+    // Concentración canónica = número + unidad ELEGIDOS por el médico (sin cola
+    // de float: usa el texto crudo del input). Único punto de verdad para
+    // pantalla, DB y PDF; reemplaza el string de la IA.
+    const concentracionCanonica = `${concNum} ${unidadConc}`;
     // Dosis confirmada en números y letras a partir de los valores CALCULADOS
     // (no del texto crudo de la IA): esto es lo único que se imprime.
     const dosisConfirmadaTexto = formatearDosisConfirmada({
@@ -162,13 +222,20 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
       volumenOUnidadesPorToma: r.volumenOUnidadesPorToma,
       esLiquido,
       unidad,
-      concentracion: med.concentracion,
+      concentracion: concentracionCanonica,
       formaFarmaceutica: med.formaFarmaceutica,
       frecuencia: med.frecuencia,
     });
     setCantidadTexto(cantidad);
+    setConcentracionConfirmada(concentracionCanonica);
     setConfirmadoLocal(true);
-    onConfirmar({ ...med, confirmado: true, cantidadTexto: cantidad, dosisConfirmadaTexto });
+    onConfirmar({
+      ...med,
+      concentracion: concentracionCanonica,
+      confirmado: true,
+      cantidadTexto: cantidad,
+      dosisConfirmadaTexto,
+    });
   }
 
   const isCustomTamano = !sizesDefault.includes(parseFloat(tamano));
@@ -185,7 +252,7 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
               <p className="text-sm font-semibold text-[#0F172A]">
                 {med.dci}
                 {med.nombreComercial ? ` (${med.nombreComercial})` : ""}
-                {" "}{med.formaFarmaceutica} {med.concentracion}
+                {" "}{med.formaFarmaceutica} {concentracionConfirmada || med.concentracion}
               </p>
               <p className="text-xs text-[#64748B] mt-0.5">
                 {med.dosis} · {med.frecuencia} · {med.duracionDias} días
@@ -299,41 +366,90 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
                 className={INPUT}
               />
             </Field>
-            <Field label="Dosis (mg/kg/día)">
-              <input
-                type="number"
-                value={dosisMgKg}
-                onChange={(e) => setDosisMgKg(e.target.value)}
-                min={0.1}
-                step={0.1}
-                disabled={disabled}
-                className={INPUT}
-              />
+            <Field label="Dosis">
+              <div className="flex gap-1.5">
+                <input
+                  type="number"
+                  value={dosisMgKg}
+                  onChange={(e) => setDosisMgKg(e.target.value)}
+                  min={0.1}
+                  step={0.1}
+                  disabled={disabled}
+                  className={`${INPUT} flex-1 min-w-0`}
+                  aria-label="Valor de dosis por peso"
+                />
+                <select
+                  value={unidadDosisPeso ?? ""}
+                  onChange={(e) => setUnidadDosisPeso((e.target.value || null) as UnidadDosisPeso | null)}
+                  disabled={disabled}
+                  aria-invalid={unidadDosisPeso === null}
+                  aria-label="Unidad de dosis por peso"
+                  className={SELECT}
+                >
+                  <option value="" disabled>— unidad —</option>
+                  {DOSIS_PESO_OPCIONES.map((u) => (
+                    <option key={u} value={u}>{u}</option>
+                  ))}
+                </select>
+              </div>
             </Field>
           </>
         )}
         {!esPorPeso && (
-          <Field label="Dosis por toma (mg)">
-            <input
-              type="number"
-              value={dosisFija}
-              onChange={(e) => setDosisFija(e.target.value)}
-              min={1}
-              disabled={disabled}
-              className={INPUT}
-            />
+          <Field label="Dosis por toma">
+            <div className="flex gap-1.5">
+              <input
+                type="number"
+                value={dosisFija}
+                onChange={(e) => setDosisFija(e.target.value)}
+                min={0}
+                step="any"
+                disabled={disabled}
+                className={`${INPUT} flex-1 min-w-0`}
+                aria-label="Valor de dosis por toma"
+              />
+              <select
+                value={unidadDosis ?? ""}
+                onChange={(e) => setUnidadDosis((e.target.value || null) as UnidadDosis | null)}
+                disabled={disabled}
+                aria-invalid={unidadDosis === null}
+                aria-label="Unidad de dosis por toma"
+                className={SELECT}
+              >
+                <option value="" disabled>— unidad —</option>
+                {DOSIS_OPCIONES.map((u) => (
+                  <option key={u} value={u}>{u}</option>
+                ))}
+              </select>
+            </div>
           </Field>
         )}
-        <Field label={`Concentración (${labelConc})`}>
-          <input
-            type="number"
-            value={concNum}
-            onChange={(e) => setConcNum(e.target.value)}
-            min={0.1}
-            step={0.1}
-            disabled={disabled}
-            className={INPUT}
-          />
+        <Field label="Concentración">
+          <div className="flex gap-1.5">
+            <input
+              type="number"
+              value={concNum}
+              onChange={(e) => setConcNum(e.target.value)}
+              min={0}
+              step="any"
+              disabled={disabled}
+              className={`${INPUT} flex-1 min-w-0`}
+              aria-label="Valor de concentración"
+            />
+            <select
+              value={unidadConc ?? ""}
+              onChange={(e) => setUnidadConc((e.target.value || null) as UnidadConcentracion | null)}
+              disabled={disabled}
+              aria-invalid={unidadConc === null}
+              aria-label="Unidad de concentración"
+              className={SELECT}
+            >
+              <option value="" disabled>— unidad —</option>
+              {opcionesConc.map((u) => (
+                <option key={u} value={u}>{u}</option>
+              ))}
+            </select>
+          </div>
         </Field>
         <Field label="Tomas por día">
           <input
@@ -410,9 +526,11 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
       )}
       {!listo && (
         <p className="text-xs text-[#94A3B8]">
-          {esPorPeso
-            ? "Ingresa peso y dosis para calcular."
-            : "Ingresa dosis para calcular."}
+          {unidadConc === null || (esPorPeso ? unidadDosisPeso === null : unidadDosis === null)
+            ? "Elige la unidad de cada valor para calcular."
+            : esPorPeso
+              ? "Ingresa peso y dosis para calcular."
+              : "Ingresa dosis para calcular."}
         </p>
       )}
 
