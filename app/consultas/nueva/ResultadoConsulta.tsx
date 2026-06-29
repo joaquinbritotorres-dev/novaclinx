@@ -116,7 +116,7 @@ function AutoTextarea({
       rows={minRows}
       placeholder={placeholder}
       aria-label={ariaLabel}
-      className="w-full resize-none overflow-hidden border-0 bg-transparent p-0 text-sm leading-relaxed text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-0 disabled:opacity-50"
+      className="w-full resize-none overflow-hidden border-0 bg-transparent p-0 text-[15px] leading-[1.75] text-[#1A1A18] placeholder-[#94A3B8] focus:outline-none focus:ring-0 disabled:opacity-50"
     />
   );
 }
@@ -400,16 +400,16 @@ export default function ResultadoConsulta({
   const puedeAprobar = !saving && !ocupadoAnadido && Boolean(analisis.trim()) && todosConfirmados;
 
   return (
-    <div className="mt-6 space-y-5 pb-2 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500">
+    <div className="mt-6 space-y-6 pb-2 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500">
       {/* ── Documento clínico: cabecera + diagnóstico + SOAP ── */}
       <div className="overflow-hidden rounded-2xl border border-[#E7E3DB] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
         {/* Cabecera del documento */}
-        <div className="flex items-center justify-between gap-2 border-b border-[#F1F0EC] px-4 py-3 sm:px-5">
+        <div className="flex items-center justify-between gap-2 border-b border-[#F1F0EC] px-5 py-4 sm:px-6">
           <div className="flex items-center gap-2.5 min-w-0">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#F0FDFB] text-[#0F766E]">
               <Stethoscope className="h-[15px] w-[15px]" strokeWidth={2} />
             </span>
-            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8A8780]">
+            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8A8780]">
               Nota clínica
             </span>
           </div>
@@ -431,8 +431,8 @@ export default function ResultadoConsulta({
 
         {/* Diagnóstico CIE-10 */}
         {(cie10Codigo || cie10Descripcion) && (
-          <div className="border-b border-[#F1F0EC] bg-[#FBFBFA] px-4 py-3.5 sm:px-5">
-            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#0F766E]">
+          <div className="border-b border-[#F1F0EC] bg-[#FBFBFA] px-5 py-4 sm:px-6">
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[#0F766E]">
               Diagnóstico CIE-10
             </label>
             <div className="flex flex-col gap-2 sm:flex-row">
@@ -443,7 +443,7 @@ export default function ResultadoConsulta({
                 disabled={saving}
                 placeholder="Código"
                 aria-label="Código CIE-10"
-                className="h-10 w-full sm:w-28 rounded-lg border border-[#D1D5DB] bg-white px-3 font-mono text-sm font-semibold text-[#0F766E] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:opacity-50"
+                className="h-11 w-full sm:w-28 rounded-lg border border-[#D1D5DB] bg-white px-3 font-mono text-[15px] font-semibold text-[#0F766E] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:opacity-50"
               />
               <input
                 type="text"
@@ -452,7 +452,7 @@ export default function ResultadoConsulta({
                 disabled={saving}
                 placeholder="Descripción del diagnóstico"
                 aria-label="Descripción CIE-10"
-                className="h-10 flex-1 rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:opacity-50"
+                className="h-11 flex-1 rounded-lg border border-[#D1D5DB] bg-white px-3 text-[15px] text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:opacity-50"
               />
             </div>
           </div>
@@ -464,36 +464,37 @@ export default function ResultadoConsulta({
           return (
             <div
               key={key}
-              className={`border-b border-[#F1F0EC] px-4 py-4 transition-colors last:border-b-0 sm:px-5 ${
+              className={`border-b border-[#F1F0EC] px-5 py-5 transition-colors last:border-b-0 sm:px-6 sm:py-6 ${
                 resaltada ? "bg-[#F0FDFB]" : ""
               }`}
             >
-              <div className="mb-2 flex items-center gap-2.5">
+              <div className="mb-3 flex items-center gap-3">
                 <span
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[#0F766E] text-xs font-bold text-white"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#0F766E] text-sm font-bold text-white"
                   aria-hidden
                 >
                   {inicial}
                 </span>
-                <label htmlFor={`soap-${key}`} className="text-sm font-semibold text-[#0F172A]">
+                <label
+                  htmlFor={`soap-${key}`}
+                  className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#0F766E]"
+                >
                   {nombre}
                 </label>
                 {resaltada && (
-                  <span className="ml-auto inline-flex items-center gap-1 text-[11px] font-medium text-[#0F766E]">
+                  <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-[#0F766E]/10 px-2 py-0.5 text-[11px] font-medium text-[#0F766E]">
                     <Check className="h-3 w-3" strokeWidth={3} />
                     Añadido
                   </span>
                 )}
               </div>
-              <div className="pl-[2.125rem]">
-                <AutoTextarea
-                  id={`soap-${key}`}
-                  value={soapValues[key]}
-                  onChange={(v) => handleSoapChange(key, v)}
-                  disabled={saving}
-                  minRows={minRows}
-                />
-              </div>
+              <AutoTextarea
+                id={`soap-${key}`}
+                value={soapValues[key]}
+                onChange={(v) => handleSoapChange(key, v)}
+                disabled={saving}
+                minRows={minRows}
+              />
             </div>
           );
         })}

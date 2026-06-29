@@ -137,14 +137,11 @@ export default function Sidebar({
 }) {
   return (
     <>
-      {/* Desktop: riel angosto y fijo (no empuja el contenido) que se expande
-          encima de la página al pasar el mouse o al recibir foco de teclado.
-          Así el contenido real (agenda, pacientes, etc.) siempre tiene mucho
-          más espacio disponible. */}
-      <aside className="group/sidebar sticky top-0 hidden h-[100dvh] w-[72px] shrink-0 lg:block print:hidden">
-        <div className="absolute inset-y-0 left-0 z-30 flex w-[72px] flex-col overflow-y-auto border-r border-[#E7E3DB] bg-white px-3 py-5 transition-[width,box-shadow] duration-200 ease-out group-hover/sidebar:w-[232px] group-hover/sidebar:shadow-2xl group-focus-within/sidebar:w-[232px] group-focus-within/sidebar:shadow-2xl">
-          <SidebarContent rail />
-        </div>
+      {/* Desktop (pantallas grandes, lg+): sidebar FIJO y abierto, con etiquetas
+          siempre visibles. Empuja el contenido (no es overlay). En pantallas
+          pequeñas se usa el cajón móvil de abajo. */}
+      <aside className="sticky top-0 hidden h-[100dvh] w-[244px] shrink-0 flex-col overflow-y-auto border-r border-[#E7E3DB] bg-white px-4 py-5 lg:flex print:hidden">
+        <SidebarContent />
       </aside>
 
       {/* Móvil: cajón off-canvas con backdrop. */}
