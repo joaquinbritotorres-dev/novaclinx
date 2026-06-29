@@ -120,8 +120,7 @@ function AutoTextarea({
       const len = el.value.length;
       el.setSelectionRange(len, len);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [autoFocus]);
   return (
     <textarea
       ref={ref}
@@ -205,13 +204,11 @@ function SeccionSoapAccordion({
   resaltada: boolean;
   minRows: number;
 }) {
-  const [abierta, setAbierta] = useState(true);
+  const [colapsada, setColapsada] = useState(false);
   const [editando, setEditando] = useState(false);
-
-  // Si la IA acaba de integrar algo aquí, abre la sección para que se vea.
-  useEffect(() => {
-    if (resaltada) setAbierta(true);
-  }, [resaltada]);
+  // Abierta por defecto; el médico puede colapsar. Si la IA integró algo aquí
+  // (resaltada), se fuerza abierta para que se vea — estado derivado, sin efecto.
+  const abierta = resaltada || !colapsada;
 
   return (
     <div
@@ -222,7 +219,7 @@ function SeccionSoapAccordion({
       {/* Cabecera plegable */}
       <button
         type="button"
-        onClick={() => setAbierta((o) => !o)}
+        onClick={() => setColapsada((c) => !c)}
         aria-expanded={abierta}
         className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-[#FBFBFA] sm:px-6"
       >
