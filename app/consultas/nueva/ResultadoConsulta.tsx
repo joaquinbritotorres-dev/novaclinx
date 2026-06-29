@@ -23,6 +23,8 @@ import {
   CalendarClock,
   Check,
   ShieldCheck,
+  ChevronDown,
+  Pencil,
 } from "lucide-react";
 import type { MedicamentoPropuesto, Medicamento } from "@/lib/recetas/tipos";
 import MedicamentoCard from "./MedicamentoCard";
@@ -90,6 +92,8 @@ function AutoTextarea({
   minRows = 3,
   placeholder,
   ariaLabel,
+  autoFocus,
+  onBlur,
 }: {
   id?: string;
   value: string;
@@ -98,6 +102,8 @@ function AutoTextarea({
   minRows?: number;
   placeholder?: string;
   ariaLabel?: string;
+  autoFocus?: boolean;
+  onBlur?: () => void;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   useIsomorphicLayoutEffect(() => {
@@ -106,18 +112,187 @@ function AutoTextarea({
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
   }, [value]);
+  // Cursor al final cuando se entra a editar (no seleccionar todo).
+  useEffect(() => {
+    if (autoFocus && ref.current) {
+      const el = ref.current;
+      el.focus();
+      const len = el.value.length;
+      el.setSelectionRange(len, len);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <textarea
       ref={ref}
       id={id}
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      onBlur={onBlur}
       disabled={disabled}
       rows={minRows}
       placeholder={placeholder}
       aria-label={ariaLabel}
-      className="w-full resize-none overflow-hidden border-0 bg-transparent p-0 text-[15px] leading-[1.75] text-[#1A1A18] placeholder-[#94A3B8] focus:outline-none focus:ring-0 disabled:opacity-50"
+      className="w-full resize-none overflow-hidden rounded-lg border border-[#0F766E]/40 bg-white p-3 text-[15px] leading-[1.75] text-[#1A1A18] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/20 focus:border-[#0F766E] disabled:opacity-50"
     />
+  );
+}
+
+/**
+ * Renderiza texto clínico con estructura legible: sub-encabezados ("Farmacológico:",
+ * "Motivo:") en negrita teal, líneas con guion/número como viñetas, el resto como
+ * párrafos. Solo para VISUALIZACIÓN — el texto editable sigue siendo plano.
+ */
+function renderTextoClinico(texto: string) {
+  const lineas = texto.split("\n");
+  const bloques: React.ReactNode[] = [];
+
+  lineas.forEach((linea, i) => {
+    const l = linea.trim();
+    if (!l) return;
+
+    // "Sub-encabezado: contenido" (etiqueta corta capitalizada al inicio de línea)
+    const enc = l.match(/^([A-ZÁÉÍÓÚÑ][\wáéíóúñ\s/.-]{1,28}):(?:\s+(.*))?$/);
+    if (enc) {
+      bloques.push(
+        <p key={i} className="leading-[1.7]">
+          <span className="font-semibold text-[#0F766E]">{enc[1]}:</span>
+          {enc[2] ? <span className="text-[#1A1A18]"> {enc[2]}</span> : null}
+        </p>
+      );
+      return;
+    }
+
+    // Viñeta ("- ", "• ", "1. ", "2) ")
+    if (/^[-•*]\s+/.test(l) || /^\d+[.)]\s+/.test(l)) {
+      const contenido = l.replace(/^[-•*]\s+/, "").replace(/^\d+[.)]\s+/, "");
+      bloques.push(
+        <div key={i} className="flex gap-2.5 leading-[1.7]">
+          <span className="mt-[0.6rem] h-1.5 w-1.5 shrink-0 rounded-full bg-[#0F766E]" aria-hidden />
+          <span className="text-[#1A1A18]">{contenido}</span>
+        </div>
+      );
+      return;
+    }
+
+    // Párrafo
+    bloques.push(
+      <p key={i} className="text-[#1A1A18] leading-[1.7]">
+        {l}
+      </p>
+    );
+  });
+
+  return <div className="space-y-2 text-[15px]">{bloques}</div>;
+}
+
+/** Una sección SOAP como acordeón: cabecera plegable + vista formateada que se
+ *  vuelve textarea al tocarla para editar. */
+function SeccionSoapAccordion({
+  inicial,
+  nombre,
+  value,
+  onChange,
+  disabled,
+  resaltada,
+  minRows,
+}: {
+  inicial: string;
+  nombre: string;
+  value: string;
+  onChange: (v: string) => void;
+  disabled: boolean;
+  resaltada: boolean;
+  minRows: number;
+}) {
+  const [abierta, setAbierta] = useState(true);
+  const [editando, setEditando] = useState(false);
+
+  // Si la IA acaba de integrar algo aquí, abre la sección para que se vea.
+  useEffect(() => {
+    if (resaltada) setAbierta(true);
+  }, [resaltada]);
+
+  return (
+    <div
+      className={`border-b border-[#F1F0EC] transition-colors last:border-b-0 ${
+        resaltada ? "bg-[#F0FDFB]" : ""
+      }`}
+    >
+      {/* Cabecera plegable */}
+      <button
+        type="button"
+        onClick={() => setAbierta((o) => !o)}
+        aria-expanded={abierta}
+        className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-[#FBFBFA] sm:px-6"
+      >
+        <span
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#0F766E] text-sm font-bold text-white"
+          aria-hidden
+        >
+          {inicial}
+        </span>
+        <span className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#0F766E]">
+          {nombre}
+        </span>
+        <span className="ml-auto flex items-center gap-2">
+          {resaltada && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#0F766E]/10 px-2 py-0.5 text-[11px] font-medium text-[#0F766E]">
+              <Check className="h-3 w-3" strokeWidth={3} />
+              Añadido
+            </span>
+          )}
+          <ChevronDown
+            className={`h-4 w-4 text-[#94A3B8] transition-transform duration-200 ${
+              abierta ? "rotate-180" : ""
+            }`}
+            strokeWidth={2}
+          />
+        </span>
+      </button>
+
+      {/* Cuerpo */}
+      {abierta && (
+        <div className="px-5 pb-5 sm:px-6 sm:pb-6">
+          {editando ? (
+            <AutoTextarea
+              value={value}
+              onChange={onChange}
+              disabled={disabled}
+              minRows={minRows}
+              ariaLabel={`Editar ${nombre}`}
+              autoFocus
+              onBlur={() => setEditando(false)}
+            />
+          ) : (
+            <div
+              role="button"
+              tabIndex={disabled ? -1 : 0}
+              onClick={() => !disabled && setEditando(true)}
+              onKeyDown={(e) => {
+                if (!disabled && (e.key === "Enter" || e.key === " ")) {
+                  e.preventDefault();
+                  setEditando(true);
+                }
+              }}
+              aria-label={`Editar ${nombre}`}
+              className="group relative block w-full cursor-text rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/20"
+            >
+              {value.trim() ? (
+                renderTextoClinico(value)
+              ) : (
+                <span className="text-[15px] italic text-[#94A3B8]">
+                  Sin contenido — toca para escribir.
+                </span>
+              )}
+              <span className="absolute right-2 top-2 text-[#CBD5E1] opacity-0 transition-opacity group-hover:opacity-100">
+                <Pencil className="h-3.5 w-3.5" strokeWidth={2} />
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -458,46 +633,19 @@ export default function ResultadoConsulta({
           </div>
         )}
 
-        {/* Secciones SOAP */}
-        {SOAP_META.map(({ key, inicial, nombre, minRows }) => {
-          const resaltada = seccionResaltada === key;
-          return (
-            <div
-              key={key}
-              className={`border-b border-[#F1F0EC] px-5 py-5 transition-colors last:border-b-0 sm:px-6 sm:py-6 ${
-                resaltada ? "bg-[#F0FDFB]" : ""
-              }`}
-            >
-              <div className="mb-3 flex items-center gap-3">
-                <span
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#0F766E] text-sm font-bold text-white"
-                  aria-hidden
-                >
-                  {inicial}
-                </span>
-                <label
-                  htmlFor={`soap-${key}`}
-                  className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#0F766E]"
-                >
-                  {nombre}
-                </label>
-                {resaltada && (
-                  <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-[#0F766E]/10 px-2 py-0.5 text-[11px] font-medium text-[#0F766E]">
-                    <Check className="h-3 w-3" strokeWidth={3} />
-                    Añadido
-                  </span>
-                )}
-              </div>
-              <AutoTextarea
-                id={`soap-${key}`}
-                value={soapValues[key]}
-                onChange={(v) => handleSoapChange(key, v)}
-                disabled={saving}
-                minRows={minRows}
-              />
-            </div>
-          );
-        })}
+        {/* Secciones SOAP — acordeones con vista formateada y edición al tocar */}
+        {SOAP_META.map(({ key, inicial, nombre, minRows }) => (
+          <SeccionSoapAccordion
+            key={key}
+            inicial={inicial}
+            nombre={nombre}
+            value={soapValues[key]}
+            onChange={(v) => handleSoapChange(key, v)}
+            disabled={saving}
+            resaltada={seccionResaltada === key}
+            minRows={minRows}
+          />
+        ))}
       </div>
 
       {/* ── Medicamentos — confirmar dosis ── */}
