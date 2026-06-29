@@ -1,8 +1,29 @@
 "use client";
 
-import { useState, useRef } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useLayoutEffect,
+  type ComponentType,
+} from "react";
 import { useRouter } from "next/navigation";
-import { X, Plus, Mic, Square, Loader2, Undo2, Sparkles } from "lucide-react";
+import {
+  X,
+  Plus,
+  Mic,
+  Square,
+  Loader2,
+  Undo2,
+  Sparkles,
+  WandSparkles,
+  Stethoscope,
+  Pill,
+  AlertTriangle,
+  CalendarClock,
+  Check,
+  ShieldCheck,
+} from "lucide-react";
 import type { MedicamentoPropuesto, Medicamento } from "@/lib/recetas/tipos";
 import MedicamentoCard from "./MedicamentoCard";
 import { contarVerificar } from "@/lib/recetas/gateDocumentos";
@@ -37,17 +58,93 @@ interface Props {
   onAprobada?: (consultaId: string) => Promise<void> | void;
 }
 
-const SOAP_META: { key: keyof SoapSections; label: string; rows: number }[] = [
-  { key: "subjetivo", label: "S — Subjetivo", rows: 4 },
-  { key: "objetivo",  label: "O — Objetivo",  rows: 4 },
-  { key: "analisis",  label: "A — Análisis",  rows: 3 },
-  { key: "plan",      label: "P — Plan",      rows: 7 },
+const SOAP_META: {
+  key: keyof SoapSections;
+  inicial: string;
+  nombre: string;
+  minRows: number;
+}[] = [
+  { key: "subjetivo", inicial: "S", nombre: "Subjetivo", minRows: 3 },
+  { key: "objetivo", inicial: "O", nombre: "Objetivo", minRows: 3 },
+  { key: "analisis", inicial: "A", nombre: "Análisis", minRows: 2 },
+  { key: "plan", inicial: "P", nombre: "Plan", minRows: 5 },
 ];
 
-const TEXTAREA =
-  "w-full px-3 py-2 bg-white border border-[#D1D5DB] rounded-lg text-sm text-[#0F172A] " +
-  "leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] " +
-  "disabled:opacity-50 resize-none";
+/** label legible de una sección, para el aviso de integración. */
+const NOMBRE_SECCION: Record<keyof SoapSections, string> = {
+  subjetivo: "Subjetivo",
+  objetivo: "Objetivo",
+  analisis: "Análisis",
+  plan: "Plan",
+};
+
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
+/** Textarea que crece con su contenido — el documento fluye sin scroll interno. */
+function AutoTextarea({
+  id,
+  value,
+  onChange,
+  disabled,
+  minRows = 3,
+  placeholder,
+  ariaLabel,
+}: {
+  id?: string;
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+  minRows?: number;
+  placeholder?: string;
+  ariaLabel?: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useIsomorphicLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      id={id}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      rows={minRows}
+      placeholder={placeholder}
+      aria-label={ariaLabel}
+      className="w-full resize-none overflow-hidden border-0 bg-transparent p-0 text-sm leading-relaxed text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-0 disabled:opacity-50"
+    />
+  );
+}
+
+/** Encabezado de sección con ícono en cuadrito — da ritmo y jerarquía. */
+function SeccionTitulo({
+  icon: Icon,
+  children,
+  tone = "teal",
+  right,
+}: {
+  icon: ComponentType<{ className?: string; strokeWidth?: number }>;
+  children: React.ReactNode;
+  tone?: "teal" | "amber";
+  right?: React.ReactNode;
+}) {
+  const toneCls =
+    tone === "amber" ? "bg-[#FEF3C7] text-[#B45309]" : "bg-[#F0FDFB] text-[#0F766E]";
+  return (
+    <div className="mb-3 flex items-center gap-2.5">
+      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${toneCls}`}>
+        <Icon className="h-[15px] w-[15px]" strokeWidth={2} />
+      </span>
+      <h2 className="text-sm font-semibold text-[#0F172A]">{children}</h2>
+      {right ? <div className="ml-auto">{right}</div> : null}
+    </div>
+  );
+}
 
 export default function ResultadoConsulta({
   soapOutput,
@@ -105,6 +202,7 @@ export default function ResultadoConsulta({
   const hasIndicaciones  = soapOutput.indicaciones !== null;
   const hasSeguimiento   = soapOutput.seguimiento_plazo !== null;
   const todosConfirmados = !hasIndicaciones || medicamentos.every((m) => m.confirmado === true);
+  const numConfirmados   = medicamentos.filter((m) => m.confirmado === true).length;
 
   const soapSetters: Record<keyof SoapSections, (v: string) => void> = {
     subjetivo: setSubjetivo,
@@ -222,7 +320,7 @@ export default function ResultadoConsulta({
       setUltimaIntegracion({ seccion, valorPrevio });
       setSeccionResaltada(seccion);
 
-      const label = SOAP_META.find((m) => m.key === seccion)?.label ?? seccion;
+      const label = NOMBRE_SECCION[seccion] ?? seccion;
       setAnadidoAviso(
         data.requiere_verificar
           ? `Añadido a ${label} con un dato marcado [VERIFICAR]. Revísalo.`
@@ -299,85 +397,130 @@ export default function ResultadoConsulta({
     }
   }
 
+  const puedeAprobar = !saving && !ocupadoAnadido && Boolean(analisis.trim()) && todosConfirmados;
+
   return (
-    <div className="mt-6 space-y-5">
-      {/* IA badge */}
-      {origenGrabacion ? (
-        <div
-          role="status"
-          className="rounded-lg px-4 py-3 text-sm font-semibold text-[#9A3412]"
-          style={{ backgroundColor: "#FFF7ED", borderLeft: "3px solid #EA580C" }}
-        >
-          Generada por IA a partir de grabación — revisión obligatoria
-        </div>
-      ) : (
-        <div
-          className="rounded-lg px-4 py-3 text-sm font-medium text-[#4338CA]"
-          style={{ backgroundColor: "#EEF2FF", borderLeft: "3px solid #6366F1" }}
-        >
-          Borrador generado por IA — revisa y corrige antes de guardar
-        </div>
-      )}
-
-      {/* CIE-10 */}
-      {(cie10Codigo || cie10Descripcion) && (
-        <div className="bg-[#F0FDFB] border border-[#99F6E4] rounded-lg px-4 py-3">
-          <p className="text-xs font-semibold text-[#0F766E] uppercase tracking-wide mb-2">
-            Diagnóstico CIE-10
-          </p>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={cie10Codigo}
-              onChange={(e) => setCie10Codigo(e.target.value)}
-              disabled={saving}
-              placeholder="Código"
-              aria-label="Código CIE-10"
-              className="w-24 h-11 px-3 bg-white border border-[#D1D5DB] rounded-lg text-sm font-mono text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:opacity-50"
-            />
-            <input
-              type="text"
-              value={cie10Descripcion}
-              onChange={(e) => setCie10Descripcion(e.target.value)}
-              disabled={saving}
-              placeholder="Descripción"
-              aria-label="Descripción CIE-10"
-              className="flex-1 h-11 px-3 bg-white border border-[#D1D5DB] rounded-lg text-sm text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:opacity-50"
-            />
+    <div className="mt-6 space-y-5 pb-2 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500">
+      {/* ── Documento clínico: cabecera + diagnóstico + SOAP ── */}
+      <div className="overflow-hidden rounded-2xl border border-[#E7E3DB] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+        {/* Cabecera del documento */}
+        <div className="flex items-center justify-between gap-2 border-b border-[#F1F0EC] px-4 py-3 sm:px-5">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#F0FDFB] text-[#0F766E]">
+              <Stethoscope className="h-[15px] w-[15px]" strokeWidth={2} />
+            </span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8A8780]">
+              Nota clínica
+            </span>
           </div>
-        </div>
-      )}
-
-      {/* SOAP sections */}
-      {SOAP_META.map(({ key, label, rows }) => (
-        <div key={key}>
-          <label
-            htmlFor={`soap-${key}`}
-            className="block text-xs font-semibold text-[#0F766E] uppercase tracking-wide mb-1"
-          >
-            {label}
-          </label>
-          <textarea
-            id={`soap-${key}`}
-            value={soapValues[key]}
-            onChange={(e) => handleSoapChange(key, e.target.value)}
-            disabled={saving}
-            rows={rows}
-            className={`${TEXTAREA}${
-              seccionResaltada === key
-                ? " ring-2 ring-[#0F766E]/60 border-[#0F766E]"
-                : ""
+          <span
+            role="status"
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${
+              origenGrabacion
+                ? "bg-[#FFF7ED] text-[#9A3412]"
+                : "bg-[#EEF2FF] text-[#4338CA]"
             }`}
-          />
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${origenGrabacion ? "bg-[#EA580C]" : "bg-[#6366F1]"}`}
+              aria-hidden
+            />
+            {origenGrabacion ? "IA · grabación — revisa" : "IA · borrador — revisa"}
+          </span>
         </div>
-      ))}
 
-      {/* Medicamentos — confirmar dosis */}
+        {/* Diagnóstico CIE-10 */}
+        {(cie10Codigo || cie10Descripcion) && (
+          <div className="border-b border-[#F1F0EC] bg-[#FBFBFA] px-4 py-3.5 sm:px-5">
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#0F766E]">
+              Diagnóstico CIE-10
+            </label>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                type="text"
+                value={cie10Codigo}
+                onChange={(e) => setCie10Codigo(e.target.value)}
+                disabled={saving}
+                placeholder="Código"
+                aria-label="Código CIE-10"
+                className="h-10 w-full sm:w-28 rounded-lg border border-[#D1D5DB] bg-white px-3 font-mono text-sm font-semibold text-[#0F766E] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:opacity-50"
+              />
+              <input
+                type="text"
+                value={cie10Descripcion}
+                onChange={(e) => setCie10Descripcion(e.target.value)}
+                disabled={saving}
+                placeholder="Descripción del diagnóstico"
+                aria-label="Descripción CIE-10"
+                className="h-10 flex-1 rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:opacity-50"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Secciones SOAP */}
+        {SOAP_META.map(({ key, inicial, nombre, minRows }) => {
+          const resaltada = seccionResaltada === key;
+          return (
+            <div
+              key={key}
+              className={`border-b border-[#F1F0EC] px-4 py-4 transition-colors last:border-b-0 sm:px-5 ${
+                resaltada ? "bg-[#F0FDFB]" : ""
+              }`}
+            >
+              <div className="mb-2 flex items-center gap-2.5">
+                <span
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[#0F766E] text-xs font-bold text-white"
+                  aria-hidden
+                >
+                  {inicial}
+                </span>
+                <label htmlFor={`soap-${key}`} className="text-sm font-semibold text-[#0F172A]">
+                  {nombre}
+                </label>
+                {resaltada && (
+                  <span className="ml-auto inline-flex items-center gap-1 text-[11px] font-medium text-[#0F766E]">
+                    <Check className="h-3 w-3" strokeWidth={3} />
+                    Añadido
+                  </span>
+                )}
+              </div>
+              <div className="pl-[2.125rem]">
+                <AutoTextarea
+                  id={`soap-${key}`}
+                  value={soapValues[key]}
+                  onChange={(v) => handleSoapChange(key, v)}
+                  disabled={saving}
+                  minRows={minRows}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── Medicamentos — confirmar dosis ── */}
       {hasIndicaciones && (
         <div>
-          <p className="text-xs font-semibold text-[#374151] uppercase tracking-wide mb-3">
-            Medicamentos — confirmar dosis
-          </p>
+          <SeccionTitulo
+            icon={Pill}
+            right={
+              medicamentos.length > 0 ? (
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                    todosConfirmados
+                      ? "bg-[#F0FDF4] text-[#15803D]"
+                      : "bg-[#FEF3C7] text-[#B45309]"
+                  }`}
+                >
+                  {todosConfirmados && <Check className="h-3 w-3" strokeWidth={3} />}
+                  {numConfirmados}/{medicamentos.length} confirmados
+                </span>
+              ) : null
+            }
+          >
+            Medicamentos
+          </SeccionTitulo>
           <div className="space-y-3">
             {medicamentos.map((med, idx) => (
               <MedicamentoCard
@@ -390,23 +533,23 @@ export default function ResultadoConsulta({
             ))}
           </div>
           {!todosConfirmados && (
-            <p className="text-xs text-[#DC2626] mt-2">
+            <p className="mt-2 text-xs text-[#DC2626]">
               Confirma todos los medicamentos para poder guardar.
             </p>
           )}
         </div>
       )}
 
-      {/* Signos de alarma — editables */}
-      <div className="bg-[#FFF7ED] border border-[#FED7AA] rounded-lg px-4 py-3">
-        <p className="text-xs font-semibold text-[#C2410C] uppercase tracking-wide mb-2">
+      {/* ── Signos de alarma — editables ── */}
+      <div className="rounded-2xl border border-[#FED7AA] bg-[#FFFBF5] px-4 py-4 sm:px-5">
+        <SeccionTitulo icon={AlertTriangle} tone="amber">
           Signos de alarma
-        </p>
+        </SeccionTitulo>
         {signosAlarma.length > 0 ? (
-          <ul className="space-y-2 mb-2">
+          <ul className="mb-2 space-y-2">
             {signosAlarma.map((signo, idx) => (
               <li key={idx} className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#EA580C] shrink-0" aria-hidden />
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#EA580C]" aria-hidden />
                 <input
                   type="text"
                   value={signo}
@@ -417,14 +560,14 @@ export default function ResultadoConsulta({
                   }}
                   disabled={saving}
                   aria-label={`Signo de alarma ${idx + 1}`}
-                  className="flex-1 px-2 py-1 bg-white border border-[#FED7AA] rounded-md text-sm text-[#7C2D12] placeholder-[#FCA57A] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/30 focus:border-[#EA580C] disabled:opacity-50"
+                  className="h-9 flex-1 rounded-md border border-[#FED7AA] bg-white px-2.5 text-sm text-[#7C2D12] placeholder-[#FCA57A] focus:outline-none focus:ring-2 focus:ring-[#EA580C]/30 focus:border-[#EA580C] disabled:opacity-50"
                 />
                 <button
                   type="button"
                   onClick={() => setSignosAlarma((prev) => prev.filter((_, i) => i !== idx))}
                   disabled={saving}
                   aria-label="Eliminar signo de alarma"
-                  className="text-[#FCA57A] hover:text-[#DC2626] transition-colors disabled:opacity-50"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-[#FCA57A] transition-colors hover:bg-white hover:text-[#DC2626] disabled:opacity-50"
                 >
                   <X className="h-4 w-4" strokeWidth={1.75} />
                 </button>
@@ -432,54 +575,50 @@ export default function ResultadoConsulta({
             ))}
           </ul>
         ) : (
-          <p className="text-xs text-[#D97706] mb-2">Sin signos de alarma documentados.</p>
+          <p className="mb-2 text-xs text-[#D97706]">Sin signos de alarma documentados.</p>
         )}
         <button
           type="button"
           onClick={() => setSignosAlarma((prev) => [...prev, ""])}
           disabled={saving}
-          className="flex items-center gap-1 text-xs font-medium text-[#EA580C] hover:text-[#C2410C] transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-1 text-xs font-medium text-[#EA580C] transition-colors hover:text-[#C2410C] disabled:opacity-50"
         >
           <Plus className="h-3.5 w-3.5" strokeWidth={2} />
           Añadir signo de alarma
         </button>
       </div>
 
-      {/* Seguimiento */}
+      {/* ── Seguimiento ── */}
       {hasSeguimiento && (
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-[#374151] uppercase tracking-wide">
-            Próximo control
-          </p>
-          <input
-            type="text"
-            value={seguimientoPlazo}
-            onChange={(e) => setSeguimientoPlazo(e.target.value)}
-            disabled={saving}
-            placeholder="Plazo (ej. 7 días)"
-            className="w-full h-11 px-3 bg-white border border-[#D1D5DB] rounded-lg text-sm text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:opacity-50"
-          />
-          <input
-            type="text"
-            value={seguimientoMotivo}
-            onChange={(e) => setSeguimientoMotivo(e.target.value)}
-            disabled={saving}
-            placeholder="Motivo del control"
-            className="w-full h-11 px-3 bg-white border border-[#D1D5DB] rounded-lg text-sm text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:opacity-50"
-          />
+        <div className="rounded-2xl border border-[#E7E3DB] bg-white px-4 py-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] sm:px-5">
+          <SeccionTitulo icon={CalendarClock}>Próximo control</SeccionTitulo>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              type="text"
+              value={seguimientoPlazo}
+              onChange={(e) => setSeguimientoPlazo(e.target.value)}
+              disabled={saving}
+              placeholder="Plazo (ej. 7 días)"
+              className="h-10 w-full sm:w-40 rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:opacity-50"
+            />
+            <input
+              type="text"
+              value={seguimientoMotivo}
+              onChange={(e) => setSeguimientoMotivo(e.target.value)}
+              disabled={saving}
+              placeholder="Motivo del control"
+              className="h-10 flex-1 rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:opacity-50"
+            />
+          </div>
         </div>
       )}
 
-      {/* Añadir algo que faltó — texto o voz */}
-      <div className="bg-[#F0FDFB] border border-[#99F6E4] rounded-lg px-4 py-3 space-y-3">
-        <div>
-          <p className="text-xs font-semibold text-[#0F766E] uppercase tracking-wide">
-            Añadir algo que faltó
-          </p>
-          <p className="text-xs text-[#5C5A54] mt-0.5">
-            Escribe o dicta el dato; la IA lo redacta y lo coloca en la sección correcta. Solo añade — no toca el resto.
-          </p>
-        </div>
+      {/* ── Añadir algo que faltó — texto o voz ── */}
+      <div className="rounded-2xl border border-[#99F6E4] bg-[#F0FDFB] px-4 py-4 sm:px-5">
+        <SeccionTitulo icon={WandSparkles}>Añadir algo que faltó</SeccionTitulo>
+        <p className="-mt-1.5 mb-3 pl-[2.375rem] text-xs leading-relaxed text-[#5C5A54]">
+          Escribe o dicta el dato; la IA lo redacta y lo coloca en la sección correcta. Solo añade — no toca el resto.
+        </p>
 
         <div className="flex items-start gap-2">
           <textarea
@@ -488,8 +627,8 @@ export default function ResultadoConsulta({
             disabled={saving || ocupadoAnadido}
             rows={2}
             placeholder="Ej: se me olvidó que el niño también tiene fiebre de 38.5"
-            className={`${TEXTAREA} flex-1`}
             aria-label="Texto a añadir"
+            className="w-full flex-1 resize-none rounded-lg border border-[#99F6E4] bg-white px-3 py-2 text-sm leading-relaxed text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0F766E]/40 focus:border-[#0F766E] disabled:opacity-50"
           />
           <button
             type="button"
@@ -497,10 +636,10 @@ export default function ResultadoConsulta({
             disabled={saving || transcribiendo || integrando}
             aria-label={grabando ? "Detener grabación" : "Grabar por voz"}
             title={grabando ? "Detener" : "Grabar por voz"}
-            className={`shrink-0 h-11 w-11 flex items-center justify-center rounded-lg border transition-colors disabled:opacity-50 ${
+            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border transition-colors disabled:opacity-50 ${
               grabando
-                ? "bg-[#DC2626] border-[#DC2626] text-white animate-pulse"
-                : "bg-white border-[#D1D5DB] text-[#0F766E] hover:border-[#0F766E]"
+                ? "animate-pulse border-[#DC2626] bg-[#DC2626] text-white"
+                : "border-[#99F6E4] bg-white text-[#0F766E] hover:border-[#0F766E]"
             }`}
           >
             {transcribiendo ? (
@@ -514,17 +653,17 @@ export default function ResultadoConsulta({
         </div>
 
         {grabando && (
-          <p className="text-xs text-[#DC2626]">Grabando… toca el cuadro rojo para detener.</p>
+          <p className="mt-2 text-xs text-[#DC2626]">Grabando… toca el cuadro rojo para detener.</p>
         )}
         {transcribiendo && (
-          <p className="text-xs text-[#0F766E]">Transcribiendo el audio…</p>
+          <p className="mt-2 text-xs text-[#0F766E]">Transcribiendo el audio…</p>
         )}
 
         <button
           type="button"
           onClick={integrarAnadidoIA}
           disabled={saving || ocupadoAnadido || !textoAnadido.trim()}
-          className="inline-flex items-center gap-1.5 h-9 px-4 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="mt-3 inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#0F766E] px-4 text-sm font-medium text-white transition-colors hover:bg-[#0F766E]/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {integrando ? (
             <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2} />
@@ -535,18 +674,18 @@ export default function ResultadoConsulta({
         </button>
 
         {anadidoError && (
-          <p role="alert" className="text-xs text-[#DC2626]">{anadidoError}</p>
+          <p role="alert" className="mt-2 text-xs text-[#DC2626]">{anadidoError}</p>
         )}
 
         {anadidoAviso && (
-          <div className="flex items-center justify-between gap-3 bg-white border border-[#99F6E4] rounded-lg px-3 py-2">
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-[#99F6E4] bg-white px-3 py-2">
             <p className="text-xs text-[#0F766E]">{anadidoAviso}</p>
             {ultimaIntegracion && (
               <button
                 type="button"
                 onClick={deshacerIntegracion}
                 disabled={saving}
-                className="inline-flex items-center gap-1 text-xs font-medium text-[#64748B] hover:text-[#DC2626] transition-colors shrink-0 disabled:opacity-50"
+                className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[#64748B] transition-colors hover:text-[#DC2626] disabled:opacity-50"
               >
                 <Undo2 className="h-3.5 w-3.5" strokeWidth={2} />
                 Deshacer
@@ -557,66 +696,80 @@ export default function ResultadoConsulta({
       </div>
 
       {/* Disclaimer */}
-      <p className="text-xs text-[#64748B] bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 py-2">
+      <p className="flex items-center gap-1.5 px-1 text-xs text-[#8A8780]">
+        <ShieldCheck className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
         Revisa la información antes de firmar. El criterio clínico y la decisión final son tuyos.
       </p>
 
-      {saveError && (
-        <div role="alert" className="text-sm text-[#DC2626] bg-[#FEE2E2] rounded-lg px-3 py-2">
-          {saveError}
-        </div>
-      )}
+      {/* ── Dock de acciones — sticky, siempre visible ── */}
+      <div className="sticky bottom-3 z-10 sm:bottom-4">
+        <div className="rounded-2xl border border-[#E7E3DB] bg-white p-2.5 shadow-[0_4px_16px_rgba(16,24,40,0.08)]">
+          {saveError && (
+            <div role="alert" className="mb-2.5 rounded-lg bg-[#FEE2E2] px-3 py-2 text-sm text-[#DC2626]">
+              {saveError}
+            </div>
+          )}
 
-      {avisoVerificar !== null && (
-        <div
-          role="alert"
-          className="text-sm text-[#92400E] bg-[#FEF3C7] border border-[#FDE68A] rounded-lg px-3 py-3 space-y-2"
-        >
-          <p>
-            Queda{avisoVerificar === 1 ? "" : "n"} <strong>{avisoVerificar}</strong>{" "}
-            dato{avisoVerificar === 1 ? "" : "s"} marcado{avisoVerificar === 1 ? "" : "s"}{" "}
-            como <strong>[VERIFICAR]</strong> en la nota. ¿Aprobar igual?
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => handleAprobar(true)}
-              disabled={saving}
-              className="h-9 px-4 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+          {avisoVerificar !== null ? (
+            <div
+              role="alert"
+              className="space-y-2.5 rounded-lg border border-[#FDE68A] bg-[#FEF3C7] px-3 py-3 text-sm text-[#92400E]"
             >
-              {saving ? "Guardando…" : "Aprobar igual"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setAvisoVerificar(null)}
-              disabled={saving}
-              className="h-9 px-4 border border-[#E2E8F0] text-[#64748B] text-sm font-medium rounded-lg hover:bg-white transition-colors disabled:opacity-50"
-            >
-              Revisar
-            </button>
-          </div>
+              <p>
+                Queda{avisoVerificar === 1 ? "" : "n"} <strong>{avisoVerificar}</strong>{" "}
+                dato{avisoVerificar === 1 ? "" : "s"} marcado{avisoVerificar === 1 ? "" : "s"}{" "}
+                como <strong>[VERIFICAR]</strong> en la nota. ¿Aprobar igual?
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <button
+                  type="button"
+                  onClick={() => handleAprobar(true)}
+                  disabled={saving}
+                  className="h-10 w-full sm:w-auto rounded-lg bg-[#0F766E] px-4 text-sm font-medium text-white transition-colors hover:bg-[#0F766E]/90 disabled:opacity-50"
+                >
+                  {saving ? "Guardando…" : "Aprobar igual"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAvisoVerificar(null)}
+                  disabled={saving}
+                  className="h-10 w-full sm:w-auto rounded-lg border border-[#E2E8F0] px-4 text-sm font-medium text-[#64748B] transition-colors hover:bg-white disabled:opacity-50"
+                >
+                  Revisar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                onClick={onDiscard}
+                disabled={saving}
+                className="h-11 rounded-lg px-4 text-sm font-medium text-[#64748B] transition-colors hover:bg-[#F1F5F9] disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 sm:w-auto"
+              >
+                Descartar
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAprobar()}
+                disabled={!puedeAprobar}
+                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-[#0F766E] text-sm font-medium text-white transition-colors hover:bg-[#0F766E]/90 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:ring-offset-2"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2} />
+                    Guardando…
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4" strokeWidth={2.5} />
+                    Aprobar y guardar
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
-      )}
-
-      {/* Actions */}
-      <div className="flex flex-col gap-3 pt-1">
-        <button
-          type="button"
-          onClick={() => handleAprobar()}
-          disabled={saving || ocupadoAnadido || !analisis.trim() || !todosConfirmados}
-          className="w-full h-11 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:ring-offset-2"
-        >
-          {saving ? "Guardando..." : "Aprobar y guardar"}
-        </button>
-
-        <button
-          type="button"
-          onClick={onDiscard}
-          disabled={saving}
-          className="w-full h-11 text-[#64748B] text-sm font-medium rounded-lg hover:bg-[#F1F5F9] transition-colors disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50"
-        >
-          Descartar
-        </button>
       </div>
     </div>
   );
