@@ -1,10 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Pencil, Mic, Sparkles } from "lucide-react";
+import { Pencil, Mic, Sparkles, Check, Loader2, WandSparkles } from "lucide-react";
 import ResultadoConsulta from "./ResultadoConsulta";
 import GrabarConsulta, { type NotaGenerada } from "./GrabarConsulta";
 import type { MedicamentoPropuesto } from "@/lib/recetas/tipos";
+
+const EJEMPLO_DESCRIPCION =
+  "Paciente de 4 años con fiebre de 38.5 desde ayer, sin otros síntomas. Al examen faringe levemente eritematosa, sin exudados. Diagnóstico: faringoamigdalitis viral. Paracetamol 15 mg/kg c/6h por 3 días si fiebre. Hidratación abundante. Control en 5 días si no mejora.";
 
 interface SoapOutput {
   soap: {
@@ -149,12 +152,17 @@ export default function NuevaConsultaForm({ pacienteId }: Props) {
               role="tab"
               aria-selected={modo === "escribir"}
               onClick={() => setModo("escribir")}
-              className={`group flex items-start gap-3 rounded-2xl border p-4 text-left transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-[#0F766E]/40 focus:ring-offset-2 ${
+              className={`group relative flex items-start gap-3 rounded-2xl border p-4 text-left transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-[#0F766E]/40 focus:ring-offset-2 ${
                 modo === "escribir"
                   ? "border-[#0F766E] bg-[#F0FDFB] ring-1 ring-[#0F766E]/15 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
                   : "border-[#E7E3DB] bg-white hover:border-[#0F766E]/40 hover:bg-[#FBFBFA]"
               }`}
             >
+              {modo === "escribir" && (
+                <span className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-[#0F766E] text-white">
+                  <Check className="h-3 w-3" strokeWidth={3} />
+                </span>
+              )}
               <span
                 className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${
                   modo === "escribir"
@@ -164,7 +172,7 @@ export default function NuevaConsultaForm({ pacienteId }: Props) {
               >
                 <Pencil className="h-[18px] w-[18px]" strokeWidth={2} />
               </span>
-              <span className="min-w-0">
+              <span className="min-w-0 pr-6">
                 <span className="block text-sm font-semibold text-[#0F172A]">Escribir</span>
                 <span className="mt-0.5 block text-xs leading-relaxed text-[#64748B]">
                   Redacta la consulta en tus palabras y la IA arma el borrador.
@@ -177,12 +185,17 @@ export default function NuevaConsultaForm({ pacienteId }: Props) {
               role="tab"
               aria-selected={modo === "grabar"}
               onClick={() => setModo("grabar")}
-              className={`group flex items-start gap-3 rounded-2xl border p-4 text-left transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-[#0F766E]/40 focus:ring-offset-2 ${
+              className={`group relative flex items-start gap-3 rounded-2xl border p-4 text-left transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-[#0F766E]/40 focus:ring-offset-2 ${
                 modo === "grabar"
                   ? "border-[#0F766E] bg-[#F0FDFB] ring-1 ring-[#0F766E]/15 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
                   : "border-[#E7E3DB] bg-white hover:border-[#0F766E]/40 hover:bg-[#FBFBFA]"
               }`}
             >
+              {modo === "grabar" && (
+                <span className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-[#0F766E] text-white">
+                  <Check className="h-3 w-3" strokeWidth={3} />
+                </span>
+              )}
               <span
                 className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${
                   modo === "grabar"
@@ -192,7 +205,7 @@ export default function NuevaConsultaForm({ pacienteId }: Props) {
               >
                 <Mic className="h-[18px] w-[18px]" strokeWidth={2} />
               </span>
-              <span className="min-w-0">
+              <span className="min-w-0 pr-6">
                 <span className="block text-sm font-semibold text-[#0F172A]">Grabar consulta</span>
                 <span className="mt-0.5 block text-xs leading-relaxed text-[#64748B]">
                   Habla durante la consulta y la IA transcribe y estructura.
@@ -205,22 +218,36 @@ export default function NuevaConsultaForm({ pacienteId }: Props) {
 
       {/* Modo Grabar */}
       {!resultado && modo === "grabar" && (
-        <GrabarConsulta
-          pacienteId={pacienteId}
-          onVolverEscribir={() => setModo("escribir")}
-          onNotaGenerada={handleNotaGenerada}
-        />
+        <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
+          <GrabarConsulta
+            pacienteId={pacienteId}
+            onVolverEscribir={() => setModo("escribir")}
+            onNotaGenerada={handleNotaGenerada}
+          />
+        </div>
       )}
 
       {/* Modo Escribir — tarjeta con cabecera, contador con progreso y CTA */}
       {!resultado && modo === "escribir" && (
-        <div className="space-y-4">
+        <div className="space-y-4 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
           <div className="overflow-hidden rounded-2xl border border-[#E7E3DB] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-shadow focus-within:border-[#0F766E] focus-within:ring-2 focus-within:ring-[#0F766E]/15">
-            <div className="flex items-center justify-between border-b border-[#F1F0EC] px-4 py-2.5">
+            <div className="flex items-center justify-between gap-2 border-b border-[#F1F0EC] px-4 py-2">
               <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8A8780]">
                 En tus palabras
               </span>
-              <span className="text-[11px] text-[#94A3B8]">Borrador con IA · tú revisas y apruebas</span>
+              {descripcion.length === 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setDescripcion(EJEMPLO_DESCRIPCION)}
+                  disabled={isGenerating}
+                  className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-[#0F766E] hover:bg-[#F0FDFB] transition-colors disabled:opacity-50"
+                >
+                  <WandSparkles className="h-3 w-3" strokeWidth={2} />
+                  Usar ejemplo
+                </button>
+              ) : (
+                <span className="text-[11px] text-[#94A3B8]">Borrador con IA · tú revisas</span>
+              )}
             </div>
 
             <textarea
@@ -229,7 +256,7 @@ export default function NuevaConsultaForm({ pacienteId }: Props) {
               disabled={isGenerating}
               rows={8}
               maxLength={4999}
-              placeholder='Describe la consulta en tus palabras. Por ejemplo: paciente de 4 años con fiebre de 38.5 desde ayer, sin otros síntomas. Al examen faringe levemente eritematosa. Diagnóstico: faringoamigdalitis viral. Paracetamol 15mg/kg c/6h por 3 días si fiebre. Control en 5 días si no mejora.'
+              placeholder="Describe la consulta en tus palabras: motivo, hallazgos del examen, diagnóstico, tratamiento e indicaciones. ¿En blanco? Toca «Usar ejemplo» para ver el formato."
               className="w-full resize-none border-0 bg-transparent px-4 py-3.5 text-sm leading-relaxed text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-0 disabled:opacity-50"
             />
 
@@ -266,7 +293,10 @@ export default function NuevaConsultaForm({ pacienteId }: Props) {
             className="inline-flex w-full items-center justify-center gap-2 h-11 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:ring-offset-2"
           >
             {isGenerating ? (
-              LOADING_MESSAGES[loadingMsgIdx]
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2} />
+                {LOADING_MESSAGES[loadingMsgIdx]}
+              </>
             ) : (
               <>
                 <Sparkles className="h-4 w-4" strokeWidth={2} />
