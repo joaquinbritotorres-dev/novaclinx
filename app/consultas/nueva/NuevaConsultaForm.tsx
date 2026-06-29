@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Pencil, Mic, Sparkles } from "lucide-react";
 import ResultadoConsulta from "./ResultadoConsulta";
 import GrabarConsulta, { type NotaGenerada } from "./GrabarConsulta";
 import type { MedicamentoPropuesto } from "@/lib/recetas/tipos";
@@ -127,38 +128,79 @@ export default function NuevaConsultaForm({ pacienteId }: Props) {
     setModo("escribir");
   }
 
+  const progreso = Math.min(100, Math.round((charCount / MIN_CHARS) * 100));
+  const minAlcanzado = charCount >= MIN_CHARS;
+
   return (
     <div>
-      {/* Toggle Escribir | Grabar — oculto al mostrar resultado */}
+      {/* Selector de modo — tarjetas; oculto al mostrar resultado */}
       {!resultado && (
-        <div className="inline-flex items-center gap-1 mb-4 p-1 bg-[#F1F5F9] rounded-lg" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={modo === "escribir"}
-            onClick={() => setModo("escribir")}
-            className={`h-9 px-4 rounded-md text-sm font-medium transition-colors ${
-              modo === "escribir"
-                ? "bg-white text-[#0F766E] shadow-sm"
-                : "text-[#64748B] hover:text-[#0F172A]"
-            }`}
+        <>
+          <p className="text-sm font-medium text-[#475569] mb-3">
+            ¿Cómo quieres documentar esta consulta?
+          </p>
+          <div
+            className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5"
+            role="tablist"
+            aria-label="Modo de captura de la consulta"
           >
-            Escribir
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={modo === "grabar"}
-            onClick={() => setModo("grabar")}
-            className={`h-9 px-4 rounded-md text-sm font-medium transition-colors ${
-              modo === "grabar"
-                ? "bg-white text-[#0F766E] shadow-sm"
-                : "text-[#64748B] hover:text-[#0F172A]"
-            }`}
-          >
-            Grabar consulta
-          </button>
-        </div>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={modo === "escribir"}
+              onClick={() => setModo("escribir")}
+              className={`group flex items-start gap-3 rounded-2xl border p-4 text-left transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-[#0F766E]/40 focus:ring-offset-2 ${
+                modo === "escribir"
+                  ? "border-[#0F766E] bg-[#F0FDFB] ring-1 ring-[#0F766E]/15 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
+                  : "border-[#E7E3DB] bg-white hover:border-[#0F766E]/40 hover:bg-[#FBFBFA]"
+              }`}
+            >
+              <span
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${
+                  modo === "escribir"
+                    ? "bg-[#0F766E] text-white"
+                    : "bg-[#F1F5F9] text-[#64748B] group-hover:text-[#0F766E]"
+                }`}
+              >
+                <Pencil className="h-[18px] w-[18px]" strokeWidth={2} />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-[#0F172A]">Escribir</span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-[#64748B]">
+                  Redacta la consulta en tus palabras y la IA arma el borrador.
+                </span>
+              </span>
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              aria-selected={modo === "grabar"}
+              onClick={() => setModo("grabar")}
+              className={`group flex items-start gap-3 rounded-2xl border p-4 text-left transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-[#0F766E]/40 focus:ring-offset-2 ${
+                modo === "grabar"
+                  ? "border-[#0F766E] bg-[#F0FDFB] ring-1 ring-[#0F766E]/15 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
+                  : "border-[#E7E3DB] bg-white hover:border-[#0F766E]/40 hover:bg-[#FBFBFA]"
+              }`}
+            >
+              <span
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${
+                  modo === "grabar"
+                    ? "bg-[#0F766E] text-white"
+                    : "bg-[#F1F5F9] text-[#64748B] group-hover:text-[#0F766E]"
+                }`}
+              >
+                <Mic className="h-[18px] w-[18px]" strokeWidth={2} />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-[#0F172A]">Grabar consulta</span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-[#64748B]">
+                  Habla durante la consulta y la IA transcribe y estructura.
+                </span>
+              </span>
+            </button>
+          </div>
+        </>
       )}
 
       {/* Modo Grabar */}
@@ -170,10 +212,17 @@ export default function NuevaConsultaForm({ pacienteId }: Props) {
         />
       )}
 
-      {/* Input area — hidden while showing result */}
+      {/* Modo Escribir — tarjeta con cabecera, contador con progreso y CTA */}
       {!resultado && modo === "escribir" && (
         <div className="space-y-4">
-          <div>
+          <div className="overflow-hidden rounded-2xl border border-[#E7E3DB] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-shadow focus-within:border-[#0F766E] focus-within:ring-2 focus-within:ring-[#0F766E]/15">
+            <div className="flex items-center justify-between border-b border-[#F1F0EC] px-4 py-2.5">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8A8780]">
+                En tus palabras
+              </span>
+              <span className="text-[11px] text-[#94A3B8]">Borrador con IA · tú revisas y apruebas</span>
+            </div>
+
             <textarea
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
@@ -181,15 +230,22 @@ export default function NuevaConsultaForm({ pacienteId }: Props) {
               rows={8}
               maxLength={4999}
               placeholder='Describe la consulta en tus palabras. Por ejemplo: paciente de 4 años con fiebre de 38.5 desde ayer, sin otros síntomas. Al examen faringe levemente eritematosa. Diagnóstico: faringoamigdalitis viral. Paracetamol 15mg/kg c/6h por 3 días si fiebre. Control en 5 días si no mejora.'
-              className="w-full px-3 py-3 bg-white border border-[#D1D5DB] rounded-xl text-sm text-[#0F172A] placeholder-[#94A3B8] leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:border-[#0F766E] disabled:opacity-50 resize-none"
+              className="w-full resize-none border-0 bg-transparent px-4 py-3.5 text-sm leading-relaxed text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-0 disabled:opacity-50"
             />
-            <div className="flex justify-between items-center mt-1 px-1">
+
+            <div className="flex items-center gap-3 border-t border-[#F1F0EC] px-4 py-3">
+              <div className="h-1 flex-1 overflow-hidden rounded-full bg-[#F1F5F9]">
+                <div
+                  className="h-full rounded-full bg-[#0F766E] transition-all duration-300 ease-out"
+                  style={{ width: `${progreso}%` }}
+                />
+              </div>
               <span
-                className={`text-xs ${charCount < MIN_CHARS ? "text-[#94A3B8]" : "text-[#0F766E]"}`}
+                className={`shrink-0 text-xs font-medium ${minAlcanzado ? "text-[#0F766E]" : "text-[#94A3B8]"}`}
               >
-                {charCount < MIN_CHARS
-                  ? `Mínimo recomendado: ${MIN_CHARS} caracteres (${MIN_CHARS - charCount} restantes)`
-                  : `${charCount} caracteres`}
+                {minAlcanzado
+                  ? `Listo · ${charCount} caracteres`
+                  : `Faltan ${MIN_CHARS - charCount}`}
               </span>
             </div>
           </div>
@@ -207,9 +263,16 @@ export default function NuevaConsultaForm({ pacienteId }: Props) {
             type="button"
             onClick={handleGenerar}
             disabled={!canGenerate}
-            className="w-full h-11 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:ring-offset-2"
+            className="inline-flex w-full items-center justify-center gap-2 h-11 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#0F766E]/50 focus:ring-offset-2"
           >
-            {isGenerating ? LOADING_MESSAGES[loadingMsgIdx] : "Generar borrador"}
+            {isGenerating ? (
+              LOADING_MESSAGES[loadingMsgIdx]
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" strokeWidth={2} />
+                Generar borrador
+              </>
+            )}
           </button>
         </div>
       )}

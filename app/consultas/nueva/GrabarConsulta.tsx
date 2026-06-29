@@ -308,19 +308,19 @@ export default function GrabarConsulta({
             {error}
           </p>
         )}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <button
             type="button"
             onClick={confirmarConsentimiento}
             disabled={fase === "iniciando"}
-            className="h-11 px-5 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+            className="w-full sm:w-auto h-11 px-5 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
           >
             {fase === "iniciando" ? "Iniciando…" : "El paciente consiente — iniciar grabación"}
           </button>
           <button
             type="button"
             onClick={onVolverEscribir}
-            className="h-11 px-4 border border-[#E2E8F0] text-[#64748B] text-sm font-medium rounded-lg hover:bg-[#F8FAFC] transition-colors"
+            className="w-full sm:w-auto h-11 px-4 border border-[#E2E8F0] text-[#64748B] text-sm font-medium rounded-lg hover:bg-[#F8FAFC] transition-colors"
           >
             Cancelar
           </button>
@@ -367,12 +367,12 @@ export default function GrabarConsulta({
         <p className="text-xs text-[#94A3B8] mb-4">
           Tope de grabación: 90 minutos. El audio se procesa al detener.
         </p>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           {fase === "grabando" ? (
             <button
               type="button"
               onClick={pausar}
-              className="h-11 px-4 border border-[#E2E8F0] text-[#374151] text-sm font-medium rounded-lg hover:bg-[#F8FAFC] transition-colors"
+              className="w-full sm:w-auto h-11 px-4 border border-[#E2E8F0] text-[#374151] text-sm font-medium rounded-lg hover:bg-[#F8FAFC] transition-colors"
             >
               Pausar
             </button>
@@ -380,7 +380,7 @@ export default function GrabarConsulta({
             <button
               type="button"
               onClick={reanudar}
-              className="h-11 px-4 border border-[#0F766E] text-[#0F766E] text-sm font-medium rounded-lg hover:bg-[#F0FDFB] transition-colors"
+              className="w-full sm:w-auto h-11 px-4 border border-[#0F766E] text-[#0F766E] text-sm font-medium rounded-lg hover:bg-[#F0FDFB] transition-colors"
             >
               Reanudar
             </button>
@@ -388,15 +388,15 @@ export default function GrabarConsulta({
           <button
             type="button"
             onClick={detener}
-            className="h-11 px-5 bg-[#DC2626] hover:bg-[#B91C1C] text-white text-sm font-medium rounded-lg transition-colors"
+            className="w-full sm:w-auto h-11 px-5 bg-[#DC2626] hover:bg-[#B91C1C] text-white text-sm font-medium rounded-lg transition-colors"
           >
             Detener y procesar
           </button>
-          <div className="flex-1" />
+          <div className="hidden sm:block sm:flex-1" />
           <button
             type="button"
             onClick={() => void descartar()}
-            className="h-11 px-3 text-[#64748B] text-sm font-medium rounded-lg hover:bg-[#F1F5F9] transition-colors"
+            className="w-full sm:w-auto h-11 px-3 text-[#64748B] text-sm font-medium rounded-lg hover:bg-[#F1F5F9] transition-colors"
           >
             Descartar grabación
           </button>
@@ -415,18 +415,18 @@ export default function GrabarConsulta({
             <p role="alert" className="text-sm text-[#DC2626] bg-[#FEE2E2] rounded-lg px-3 py-2 mb-3">
               {error}
             </p>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               <button
                 type="button"
                 onClick={() => void subir()}
-                className="h-11 px-5 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors"
+                className="w-full sm:w-auto h-11 px-5 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors"
               >
                 Reintentar subida
               </button>
               <button
                 type="button"
                 onClick={() => void descartar()}
-                className="h-11 px-3 text-[#64748B] text-sm font-medium rounded-lg hover:bg-[#F1F5F9] transition-colors"
+                className="w-full sm:w-auto h-11 px-3 text-[#64748B] text-sm font-medium rounded-lg hover:bg-[#F1F5F9] transition-colors"
               >
                 Descartar grabación
               </button>
@@ -474,20 +474,20 @@ export default function GrabarConsulta({
       <p role="alert" className="text-sm text-[#DC2626] bg-[#FEE2E2] rounded-lg px-3 py-2 mb-3">
         {error}
       </p>
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <button
           type="button"
           onClick={() =>
             fase === "error_nota" ? void generarNota() : void transcribir()
           }
-          className="h-11 px-5 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors"
+          className="w-full sm:w-auto h-11 px-5 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors"
         >
           {fase === "error_nota" ? "Reintentar generación" : "Reintentar transcripción"}
         </button>
         <button
           type="button"
           onClick={() => void descartar()}
-          className="h-11 px-3 text-[#64748B] text-sm font-medium rounded-lg hover:bg-[#F1F5F9] transition-colors"
+          className="w-full sm:w-auto h-11 px-3 text-[#64748B] text-sm font-medium rounded-lg hover:bg-[#F1F5F9] transition-colors"
         >
           Descartar grabación
         </button>
