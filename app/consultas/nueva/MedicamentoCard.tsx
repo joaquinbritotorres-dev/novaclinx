@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { AlertTriangle } from "lucide-react";
 import type { MedicamentoPropuesto, Medicamento, UnidadDispensacion } from "@/lib/recetas/tipos";
 import { calcularDispensacion } from "@/lib/recetas/calcularDispensacion";
+import { chequearSanidad, type ChequeoSanidad } from "@/lib/recetas/sanidad";
 import {
   parsearTomasPorDia,
   parsearDosis,
@@ -180,7 +182,7 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
       unidadConc, unidadDosis, unidadDosisPeso, esLiquido, esInhalador, med.duracionDias]);
 
   function handleConfirmar() {
-    if (!resultado?.ok || unidadConc === null || forma === null) return;
+    if (!resultado?.ok || unidadConc === null || forma === null || !sanidad?.ok) return;
     const r = resultado.resultado;
     const tam = parseFloat(tamano);
     const cantidad = buildCantidadTexto(r.numEnvases, tam, forma);
@@ -211,8 +213,17 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
     });
   }
 
+  // Red de seguridad: sobre el resultado YA calculado (no recalcula). Si el
+  // número es clínicamente imposible (error de unidad), bloquea el verde y el
+  // botón Confirmar. No reemplaza el criterio médico; atrapa errores de dedo.
+  const sanidad = useMemo<ChequeoSanidad | null>(() => {
+    if (!resultado?.ok || forma === null) return null;
+    return chequearSanidad(resultado.resultado, forma);
+  }, [resultado, forma]);
+
   const isCustomTamano = !sizesDefault.includes(parseFloat(tamano));
-  const listo = Boolean(resultado?.ok);
+  const listo = Boolean(resultado?.ok && sanidad?.ok);
+  const alertaSanidad = Boolean(resultado?.ok && sanidad && !sanidad.ok);
 
   // ── Confirmed view ──────────────────────────────────────────────────────────
   if (confirmadoLocal) {
@@ -476,10 +487,20 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
           </p>
         </div>
       )}
+      {/* Alerta de cordura — resultado calculado pero clínicamente imposible */}
+      {alertaSanidad && sanidad?.motivo && (
+        <div
+          role="alert"
+          className="flex items-start gap-2 bg-[#FFFBEB] border border-[#FCD34D] rounded-lg px-3 py-2"
+        >
+          <AlertTriangle className="h-4 w-4 text-[#B45309] shrink-0 mt-0.5" strokeWidth={2} />
+          <p className="text-sm text-[#92400E]">{sanidad.motivo}</p>
+        </div>
+      )}
       {resultado && !resultado.ok && !resultado.requiereCantidadManual && (
         <p className="text-xs text-[#DC2626]">{resultado.razon}</p>
       )}
-      {!listo && (
+      {!resultado?.ok && (
         <p className="text-xs text-[#94A3B8]">
           {unidadConc === null || (esPorPeso ? unidadDosisPeso === null : unidadDosis === null)
             ? "Elige la medida de cada valor para calcular."
