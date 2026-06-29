@@ -16,11 +16,13 @@ import type { UnidadDispensacion } from "./tipos";
 // ─── Tipos de unidad ──────────────────────────────────────────────────────────
 
 export type UnidadConcentracion =
-  | "mg/mL"
-  | "mg/5 mL"
   | "mcg/mL"
-  | "mg"
+  | "mg/mL"
+  | "mg/2 mL"
+  | "mg/5 mL"
+  | "mg/10 mL"
   | "mcg"
+  | "mg"
   | "g"
   | "mcg/puff"
   | "mg/puff";
@@ -33,11 +35,13 @@ export type UnidadDosisPeso = "mg/kg/día" | "mcg/kg/día";
 
 /** Concentración → unidad base de la forma (mg/mL, mg/comprimido o mg/puff). */
 export const FACTOR_CONCENTRACION: Record<UnidadConcentracion, number> = {
-  "mg/mL": 1,
-  "mg/5 mL": 0.2, // ÷5: 250 mg/5 mL = 50 mg/mL
   "mcg/mL": 0.001,
-  mg: 1,
+  "mg/mL": 1,
+  "mg/2 mL": 0.5, // ÷2: 50 mg/2 mL = 25 mg/mL
+  "mg/5 mL": 0.2, // ÷5: 250 mg/5 mL = 50 mg/mL
+  "mg/10 mL": 0.1, // ÷10
   mcg: 0.001,
+  mg: 1,
   g: 1000,
   "mcg/puff": 0.001, // 100 mcg/puff = 0.1 mg/puff
   "mg/puff": 1,
@@ -57,16 +61,41 @@ export const FACTOR_DOSIS_PESO: Record<UnidadDosisPeso, number> = {
 };
 
 // ─── Opciones de cada selector ───────────────────────────────────────────────
-// Las unidades de concentración DEPENDEN de la forma (ofrecer "mg/mL" para un
-// comprimido sería absurdo y peligroso). La dosis es masa pura, independiente.
+// El médico elige la medida de UN desplegable con TODOS los tipos, agrupados.
+// La forma (líquido/comprimido/inhalador) se DERIVA de la medida elegida — el
+// médico no la elige aparte. La IA nunca preselecciona: el selector arranca en
+// "Elige la medida".
 
-export const CONCENTRACION_POR_FORMA: Record<UnidadDispensacion, UnidadConcentracion[]> = {
-  liquido: ["mg/mL", "mg/5 mL", "mcg/mL"],
-  comprimido: ["mg", "mcg", "g"],
-  inhalador: ["mcg/puff", "mg/puff"],
+export interface GrupoConcentracion {
+  label: string;
+  unidades: UnidadConcentracion[];
+}
+
+export const CONCENTRACION_GRUPOS: GrupoConcentracion[] = [
+  { label: "Líquido (por mL)", unidades: ["mcg/mL", "mg/mL", "mg/2 mL", "mg/5 mL", "mg/10 mL"] },
+  { label: "Comprimido / cápsula (por unidad)", unidades: ["mcg", "mg", "g"] },
+  { label: "Inhalador (por puff)", unidades: ["mcg/puff", "mg/puff"] },
+];
+
+/** Forma de dispensación implícita en la unidad de concentración elegida. */
+const FORMA_DE_CONCENTRACION: Record<UnidadConcentracion, UnidadDispensacion> = {
+  "mcg/mL": "liquido",
+  "mg/mL": "liquido",
+  "mg/2 mL": "liquido",
+  "mg/5 mL": "liquido",
+  "mg/10 mL": "liquido",
+  mcg: "comprimido",
+  mg: "comprimido",
+  g: "comprimido",
+  "mcg/puff": "inhalador",
+  "mg/puff": "inhalador",
 };
 
-export const DOSIS_OPCIONES: UnidadDosis[] = ["mg", "mcg", "g"];
+export function formaDeUnidadConcentracion(u: UnidadConcentracion): UnidadDispensacion {
+  return FORMA_DE_CONCENTRACION[u];
+}
+
+export const DOSIS_OPCIONES: UnidadDosis[] = ["mcg", "mg", "g"];
 export const DOSIS_PESO_OPCIONES: UnidadDosisPeso[] = ["mg/kg/día", "mcg/kg/día"];
 
 // ─── Limpieza de float ───────────────────────────────────────────────────────
@@ -110,13 +139,15 @@ export function parsearUnidadConcentracion(concentracion: string): UnidadConcent
   if (/\d\s*mcg\s*\/\s*(puff|dosis|disparo|inhalaci)/.test(s)) return "mcg/puff";
   if (/\d\s*mg\s*\/\s*(puff|dosis|disparo|inhalaci)/.test(s)) return "mg/puff";
 
-  // Líquido con volumen de referencia: "mg/5 mL", "mg/mL"
+  // Líquido con volumen de referencia: "mg/5 mL", "mg/mL", etc.
   const frac = s.match(/\d\s*mg\s*\/\s*(\d+)\s*ml/);
   if (frac) {
     const div = parseInt(frac[1], 10);
     if (div === 1) return "mg/mL";
+    if (div === 2) return "mg/2 mL";
     if (div === 5) return "mg/5 mL";
-    return null; // "/10 mL" u otros: fuera de la tabla aprobada → el médico elige
+    if (div === 10) return "mg/10 mL";
+    return null; // otro divisor fuera de la tabla → el médico elige
   }
   if (/\d\s*mcg\s*\/\s*ml/.test(s)) return "mcg/mL";
   if (/\d\s*mg\s*\/\s*ml/.test(s)) return "mg/mL";

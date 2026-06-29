@@ -3,6 +3,7 @@ import {
   FACTOR_CONCENTRACION,
   FACTOR_DOSIS,
   FACTOR_DOSIS_PESO,
+  formaDeUnidadConcentracion,
   limpiarFloat,
   normalizarConcentracion,
   normalizarDosis,
@@ -18,12 +19,16 @@ import { calcularDispensacion } from "./calcularDispensacion";
 // ─── Un test por conversión exacta de la tabla aprobada ──────────────────────
 
 describe("normalizarConcentracion — factor exacto por unidad", () => {
+  it("mcg/mL ×0.001", () => expect(normalizarConcentracion(200, "mcg/mL")).toBe(0.2));
   it("mg/mL ×1", () => expect(normalizarConcentracion(50, "mg/mL")).toBe(50));
+  it("mg/2 mL ×0.5 (50 mg/2 mL = 25 mg/mL)", () =>
+    expect(normalizarConcentracion(50, "mg/2 mL")).toBe(25));
   it("mg/5 mL ×0.2 (250 mg/5 mL = 50 mg/mL)", () =>
     expect(normalizarConcentracion(250, "mg/5 mL")).toBe(50));
-  it("mcg/mL ×0.001", () => expect(normalizarConcentracion(200, "mcg/mL")).toBe(0.2));
-  it("mg ×1 (por comprimido)", () => expect(normalizarConcentracion(500, "mg")).toBe(500));
+  it("mg/10 mL ×0.1 (120 mg/10 mL = 12 mg/mL)", () =>
+    expect(normalizarConcentracion(120, "mg/10 mL")).toBe(12));
   it("mcg ×0.001 (por comprimido)", () => expect(normalizarConcentracion(25, "mcg")).toBe(0.025));
+  it("mg ×1 (por comprimido)", () => expect(normalizarConcentracion(500, "mg")).toBe(500));
   it("g ×1000 (por comprimido)", () => expect(normalizarConcentracion(1, "g")).toBe(1000));
   it("mcg/puff ×0.001 (100 mcg/puff = 0.1 mg/puff) — el caso del bug", () =>
     expect(normalizarConcentracion(100, "mcg/puff")).toBe(0.1));
@@ -44,14 +49,32 @@ describe("normalizarDosisPeso — factor exacto por unidad", () => {
 describe("tablas de factores — valores exactos", () => {
   it("concentración", () => {
     expect(FACTOR_CONCENTRACION).toEqual({
-      "mg/mL": 1, "mg/5 mL": 0.2, "mcg/mL": 0.001,
-      mg: 1, mcg: 0.001, g: 1000,
+      "mcg/mL": 0.001, "mg/mL": 1, "mg/2 mL": 0.5, "mg/5 mL": 0.2, "mg/10 mL": 0.1,
+      mcg: 0.001, mg: 1, g: 1000,
       "mcg/puff": 0.001, "mg/puff": 1,
     });
   });
   it("dosis", () => expect(FACTOR_DOSIS).toEqual({ mg: 1, mcg: 0.001, g: 1000 }));
   it("dosis por peso", () =>
     expect(FACTOR_DOSIS_PESO).toEqual({ "mg/kg/día": 1, "mcg/kg/día": 0.001 }));
+});
+
+describe("formaDeUnidadConcentracion — la medida implica la forma", () => {
+  it("líquidos", () => {
+    for (const u of ["mcg/mL", "mg/mL", "mg/2 mL", "mg/5 mL", "mg/10 mL"] as const) {
+      expect(formaDeUnidadConcentracion(u)).toBe("liquido");
+    }
+  });
+  it("comprimidos", () => {
+    for (const u of ["mcg", "mg", "g"] as const) {
+      expect(formaDeUnidadConcentracion(u)).toBe("comprimido");
+    }
+  });
+  it("inhaladores", () => {
+    for (const u of ["mcg/puff", "mg/puff"] as const) {
+      expect(formaDeUnidadConcentracion(u)).toBe("inhalador");
+    }
+  });
 });
 
 // ─── limpiarFloat: sin cola de punto flotante, preservando sub-mg ────────────
@@ -81,8 +104,12 @@ describe("parsearUnidadConcentracion", () => {
   it("1 g → g", () => expect(parsearUnidadConcentracion("1 g")).toBe("g"));
   it("string desconocido → null (sin asumir)", () =>
     expect(parsearUnidadConcentracion("vía inhalatoria")).toBeNull());
-  it("/10 mL fuera de tabla → null", () =>
-    expect(parsearUnidadConcentracion("100 mg/10 mL")).toBeNull());
+  it("250 mg/2 mL → mg/2 mL", () =>
+    expect(parsearUnidadConcentracion("250 mg/2 mL")).toBe("mg/2 mL"));
+  it("120 mg/10 mL → mg/10 mL", () =>
+    expect(parsearUnidadConcentracion("120 mg/10 mL")).toBe("mg/10 mL"));
+  it("divisor fuera de tabla (/3 mL) → null", () =>
+    expect(parsearUnidadConcentracion("100 mg/3 mL")).toBeNull());
 });
 
 describe("parsearValorConcentracion — valor crudo, no normalizado", () => {
