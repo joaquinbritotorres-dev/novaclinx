@@ -122,6 +122,35 @@ export default function FacturacionSection({
     }
   }
 
+  // Re-DISPARA la verificación en el SRI (re-envío idempotente: reusa la misma
+  // clave, no duplica). Para facturas que quedaron en timeout.
+  async function reverificarEstado() {
+    if (!facturaExistente) return;
+    setSincronizando(true);
+    setSyncMsg(null);
+    try {
+      const res = await fetch(`/api/facturas/${facturaExistente.id}/reverificar`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.estado === "autorizada" || data.estado === "rechazada") {
+        router.refresh();
+        return;
+      }
+      setSyncMsg(
+        data.error ||
+          `El SRI aún no confirma${
+            typeof data.estadoSri === "string" ? ` (${data.estadoSri})` : ""
+          }. Tu factura sigue en cola; vuelve a intentar en unos minutos.`
+      );
+    } catch {
+      setSyncMsg("Error de conexión al SRI. Reintenta en unos minutos.");
+    } finally {
+      setSincronizando(false);
+    }
+  }
+
   const [pagadorNombre, setPagadorNombre] = useState(pagadorInicial?.nombre ?? "");
   const [pagadorIdentificacion, setPagadorIdentificacion] = useState(pagadorInicial?.identificacion ?? "");
   const [pagadorTipo, setPagadorTipo] = useState(pagadorInicial?.tipoIdentificacion ?? "05");
@@ -336,11 +365,11 @@ export default function FacturacionSection({
             <p className="text-xs text-[#5C5A54]">N° {facturaExistente.secuencial}</p>
           )}
           <button
-            onClick={sincronizarEstado}
+            onClick={reverificarEstado}
             disabled={sincronizando}
             className="w-full h-11 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            {sincronizando ? "Consultando…" : "Consultar estado al SRI"}
+            {sincronizando ? "Reintentando con el SRI…" : "Reintentar verificación con el SRI"}
           </button>
           {syncMsg && <p className="text-xs text-[#64748B]">{syncMsg}</p>}
         </div>
