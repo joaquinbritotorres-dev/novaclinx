@@ -16,8 +16,9 @@ import {
   type UnidadDosis,
   type UnidadDosisPeso,
   CONCENTRACION_GRUPOS,
-  DOSIS_OPCIONES,
   DOSIS_PESO_OPCIONES,
+  dosisOpcionesPorForma,
+  esUnidadDosisDirecta,
   formaDeUnidadConcentracion,
   normalizarConcentracion,
   normalizarDosis,
@@ -123,9 +124,14 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
   // inhalador).
   function cambiarUnidadConc(u: UnidadConcentracion | null) {
     setUnidadConc(u);
+    // La unidad de dosis depende de la forma → se re-elige. En inhalador la dosis
+    // se prescribe en puff (directa) y no se dosifica por peso.
+    setUnidadDosis(null);
     if (u) {
-      const sizes = sizesParaUnidad(formaDeUnidadConcentracion(u));
+      const formaNueva = formaDeUnidadConcentracion(u);
+      const sizes = sizesParaUnidad(formaNueva);
       setTamano(String(sizes[sizes.length - 1]));
+      if (formaNueva === "inhalador") setEsPorPeso(false);
     } else {
       setTamano("");
     }
@@ -134,6 +140,8 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
   // Etiquetas de dispensación (la concentración y la dosis llevan su selector).
   const labelEnvase = forma === "liquido" ? "mL" : forma === "inhalador" ? "dosis" : "unidades";
   const labelTotal = forma === "liquido" ? "mL" : forma === "inhalador" ? "dosis" : "u";
+  // Unidades de dosis por toma disponibles según la forma (inhalador → puff).
+  const opcionesDosis = dosisOpcionesPorForma(forma ?? "comprimido");
 
   const resultado = useMemo(() => {
     const conc = parseFloat(concNum);
@@ -167,6 +175,22 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
     const df = parseFloat(dosisFija);
     if (!df || df <= 0) return null;
     if (unidadDosis === null) return null;
+
+    // Dosis DIRECTA (ej. 2 puff): se pasa tal cual, sin dividir por concentración.
+    if (esUnidadDosisDirecta(unidadDosis)) {
+      return calcularDispensacion({
+        unidadesPorTomaDirectas: df,
+        concentracion: concBase,
+        tomasPorDia: tom,
+        diasTratamiento: med.duracionDias,
+        tamanoEnvase: tam,
+        esPRN: false,
+        esLiquido,
+        esInhalador,
+      });
+    }
+
+    // Dosis por MASA: se normaliza a mg y la calculadora la divide por concentración.
     const dfBase = normalizarDosis(df, unidadDosis);
     return calcularDispensacion({
       dosisPorTomaMg: dfBase,
@@ -277,36 +301,39 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
         </p>
       </div>
 
-      {/* Tipo de cálculo — el médico puede cambiar lo que infirió la IA */}
-      <div>
-        <span className="text-xs font-medium text-[#374151]">Tipo de dosis</span>
-        <div className="mt-1 inline-flex items-center gap-0.5 rounded-lg bg-[#F1F5F9] p-0.5">
-          <button
-            type="button"
-            onClick={() => setEsPorPeso(true)}
-            disabled={disabled}
-            className={`h-8 rounded-md px-3 text-xs font-medium transition-colors disabled:opacity-50 ${
-              esPorPeso
-                ? "bg-white text-[#0F766E] shadow-sm"
-                : "text-[#64748B] hover:text-[#0F172A]"
-            }`}
-          >
-            Por peso (mg/kg/día)
-          </button>
-          <button
-            type="button"
-            onClick={() => setEsPorPeso(false)}
-            disabled={disabled}
-            className={`h-8 rounded-md px-3 text-xs font-medium transition-colors disabled:opacity-50 ${
-              !esPorPeso
-                ? "bg-white text-[#0F766E] shadow-sm"
-                : "text-[#64748B] hover:text-[#0F172A]"
-            }`}
-          >
-            Dosis fija por toma
-          </button>
+      {/* Tipo de cálculo — el médico puede cambiar lo que infirió la IA. En
+          inhalador no aplica dosificar por peso: se prescribe en puff. */}
+      {forma !== "inhalador" && (
+        <div>
+          <span className="text-xs font-medium text-[#374151]">Tipo de dosis</span>
+          <div className="mt-1 inline-flex items-center gap-0.5 rounded-lg bg-[#F1F5F9] p-0.5">
+            <button
+              type="button"
+              onClick={() => setEsPorPeso(true)}
+              disabled={disabled}
+              className={`h-8 rounded-md px-3 text-xs font-medium transition-colors disabled:opacity-50 ${
+                esPorPeso
+                  ? "bg-white text-[#0F766E] shadow-sm"
+                  : "text-[#64748B] hover:text-[#0F172A]"
+              }`}
+            >
+              Por peso (mg/kg/día)
+            </button>
+            <button
+              type="button"
+              onClick={() => setEsPorPeso(false)}
+              disabled={disabled}
+              className={`h-8 rounded-md px-3 text-xs font-medium transition-colors disabled:opacity-50 ${
+                !esPorPeso
+                  ? "bg-white text-[#0F766E] shadow-sm"
+                  : "text-[#64748B] hover:text-[#0F172A]"
+              }`}
+            >
+              Dosis fija por toma
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Dose inputs */}
       <div className="grid grid-cols-2 gap-3">
@@ -375,7 +402,7 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
                 className={SELECT}
               >
                 <option value="" disabled>Elige la medida</option>
-                {DOSIS_OPCIONES.map((u) => (
+                {opcionesDosis.map((u) => (
                   <option key={u} value={u}>{u}</option>
                 ))}
               </select>

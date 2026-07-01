@@ -41,6 +41,10 @@ export function redondearPuffEntero(puffs: number): number {
 export interface EntradaCalculadora {
   /** Dosis directa por toma en mg (alternativa a dosisMgKgDia+pesoKg) */
   dosisPorTomaMg?: number;
+  /** Unidades de administración por toma ingresadas DIRECTAMENTE (ej. 2 puff).
+   *  Si viene, es el volumen/unidades por toma tal cual — NO se divide por la
+   *  concentración (la concentración solo documenta la dosis en mg). */
+  unidadesPorTomaDirectas?: number;
   /** Dosis en mg/kg/día (requiere pesoKg) */
   dosisMgKgDia?: number;
   /** Peso del paciente en kg */
@@ -84,34 +88,51 @@ export function calcularDispensacion(entrada: EntradaCalculadora): ResultadoCalc
     return { ok: false, requiereCantidadManual: true, razon: "PRN" };
   }
 
-  let dosisPorTomaMg: number;
-
-  if (entrada.dosisPorTomaMg !== undefined) {
-    dosisPorTomaMg = entrada.dosisPorTomaMg;
-  } else if (entrada.dosisMgKgDia !== undefined && entrada.pesoKg !== undefined) {
-    const dosisDiariaMg = entrada.dosisMgKgDia * entrada.pesoKg;
-    dosisPorTomaMg = dosisDiariaMg / entrada.tomasPorDia;
-  } else {
-    return {
-      ok: false,
-      requiereCantidadManual: false,
-      razon: "Debe proveer dosisPorTomaMg o dosisMgKgDia + pesoKg",
-    };
-  }
-
-  if (entrada.concentracion <= 0) {
-    return { ok: false, requiereCantidadManual: false, razon: "Concentración debe ser > 0" };
-  }
   if (entrada.tamanoEnvase <= 0) {
     return { ok: false, requiereCantidadManual: false, razon: "Tamaño de envase debe ser > 0" };
   }
 
-  const rawVolumen = dosisPorTomaMg / entrada.concentracion;
-  const volumenOUnidadesPorToma = entrada.esLiquido
-    ? redondearMlJeringa(rawVolumen)
-    : entrada.esInhalador
-    ? redondearPuffEntero(rawVolumen)
-    : rawVolumen;
+  let dosisPorTomaMg: number;
+  let volumenOUnidadesPorToma: number;
+
+  if (entrada.unidadesPorTomaDirectas !== undefined) {
+    // Modo DIRECTO: el médico ingresó las unidades de administración (ej. 2 puff).
+    // NO se divide por la concentración; ese número ES el volumen/unidades por
+    // toma. La concentración solo documenta la dosis equivalente en mg.
+    const raw = entrada.unidadesPorTomaDirectas;
+    volumenOUnidadesPorToma = entrada.esLiquido
+      ? redondearMlJeringa(raw)
+      : entrada.esInhalador
+      ? redondearPuffEntero(raw)
+      : raw;
+    dosisPorTomaMg = volumenOUnidadesPorToma * entrada.concentracion;
+  } else {
+    // Modo por MASA: dosis en mg (directa o derivada de mg/kg/día) ÷ concentración.
+    if (entrada.dosisPorTomaMg !== undefined) {
+      dosisPorTomaMg = entrada.dosisPorTomaMg;
+    } else if (entrada.dosisMgKgDia !== undefined && entrada.pesoKg !== undefined) {
+      const dosisDiariaMg = entrada.dosisMgKgDia * entrada.pesoKg;
+      dosisPorTomaMg = dosisDiariaMg / entrada.tomasPorDia;
+    } else {
+      return {
+        ok: false,
+        requiereCantidadManual: false,
+        razon: "Debe proveer dosisPorTomaMg, unidadesPorTomaDirectas o dosisMgKgDia + pesoKg",
+      };
+    }
+
+    if (entrada.concentracion <= 0) {
+      return { ok: false, requiereCantidadManual: false, razon: "Concentración debe ser > 0" };
+    }
+
+    const rawVolumen = dosisPorTomaMg / entrada.concentracion;
+    volumenOUnidadesPorToma = entrada.esLiquido
+      ? redondearMlJeringa(rawVolumen)
+      : entrada.esInhalador
+      ? redondearPuffEntero(rawVolumen)
+      : rawVolumen;
+  }
+
   const totalNecesario = volumenOUnidadesPorToma * entrada.tomasPorDia * entrada.diasTratamiento;
   const numEnvases = Math.ceil(totalNecesario / entrada.tamanoEnvase);
   const totalDispensado = numEnvases * entrada.tamanoEnvase;

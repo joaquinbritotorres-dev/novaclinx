@@ -79,3 +79,50 @@ describe("calcularDispensacion — inhalador (esInhalador)", () => {
     expect(r.ok && r.resultado.volumenOUnidadesPorToma).toBe(3);
   });
 });
+
+describe("calcularDispensacion — dosis DIRECTA en puff (sin dividir por concentración)", () => {
+  const base = {
+    tomasPorDia: 4,
+    diasTratamiento: 7,
+    tamanoEnvase: 200,
+    esPRN: false as const,
+    esInhalador: true,
+  };
+
+  it("2 puff/toma, c/6h × 7 días, inhalador de 200 → 2 puffs, 56 total, 1 envase", () => {
+    const r = calcularDispensacion({
+      ...base,
+      unidadesPorTomaDirectas: 2,
+      concentracion: 0.1, // 100 mcg/puff (solo documenta la dosis)
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.resultado.volumenOUnidadesPorToma).toBe(2);
+      expect(r.resultado.totalNecesario).toBe(56);
+      expect(r.resultado.numEnvases).toBe(1);
+    }
+  });
+
+  it("equivale a ingresar la dosis en masa (2 puff == 0.2 mg / 0.1 mg-por-puff)", () => {
+    const directa = calcularDispensacion({
+      ...base,
+      unidadesPorTomaDirectas: 2,
+      concentracion: 0.1,
+    });
+    const masa = calcularDispensacion({
+      ...base,
+      dosisPorTomaMg: 0.2,
+      concentracion: 0.1,
+    });
+    expect(directa).toEqual(masa);
+  });
+
+  it("la concentración NO afecta la CANTIDAD en modo directo", () => {
+    const a = calcularDispensacion({ ...base, unidadesPorTomaDirectas: 2, concentracion: 0.1 });
+    const b = calcularDispensacion({ ...base, unidadesPorTomaDirectas: 2, concentracion: 0.05 });
+    expect(a.ok && a.resultado.numEnvases).toBe(b.ok && b.resultado.numEnvases);
+    expect(a.ok && a.resultado.volumenOUnidadesPorToma).toBe(
+      b.ok && b.resultado.volumenOUnidadesPorToma
+    );
+  });
+});

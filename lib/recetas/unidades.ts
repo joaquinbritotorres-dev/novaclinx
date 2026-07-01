@@ -27,7 +27,13 @@ export type UnidadConcentracion =
   | "mcg/puff"
   | "mg/puff";
 
-export type UnidadDosis = "mg" | "mcg" | "g";
+/** Dosis por MASA: se normaliza a mg y la calculadora la divide por la
+ *  concentración para obtener las unidades de administración. */
+export type UnidadDosisMasa = "mcg" | "mg" | "g";
+/** Dosis DIRECTA en la unidad de administración: el médico dice cuántas por toma
+ *  (ej. 2 puff) y NO se divide por concentración. */
+export type UnidadDosisDirecta = "puff";
+export type UnidadDosis = UnidadDosisMasa | UnidadDosisDirecta;
 
 export type UnidadDosisPeso = "mg/kg/día" | "mcg/kg/día";
 
@@ -47,10 +53,10 @@ export const FACTOR_CONCENTRACION: Record<UnidadConcentracion, number> = {
   "mg/puff": 1,
 };
 
-/** Dosis por toma → mg. */
-export const FACTOR_DOSIS: Record<UnidadDosis, number> = {
-  mg: 1,
+/** Dosis por toma (por masa) → mg. */
+export const FACTOR_DOSIS: Record<UnidadDosisMasa, number> = {
   mcg: 0.001,
+  mg: 1,
   g: 1000,
 };
 
@@ -98,6 +104,21 @@ export function formaDeUnidadConcentracion(u: UnidadConcentracion): UnidadDispen
 export const DOSIS_OPCIONES: UnidadDosis[] = ["mcg", "mg", "g"];
 export const DOSIS_PESO_OPCIONES: UnidadDosisPeso[] = ["mg/kg/día", "mcg/kg/día"];
 
+/**
+ * Unidades de dosis por toma disponibles según la forma:
+ *  - Inhalador → "puff" (directa; el médico prescribe en disparos).
+ *  - Líquido / comprimido → masa (mcg/mg/g), que se convierte por concentración.
+ */
+export function dosisOpcionesPorForma(forma: UnidadDispensacion): UnidadDosis[] {
+  if (forma === "inhalador") return ["puff"];
+  return ["mcg", "mg", "g"];
+}
+
+/** true si la dosis se ingresa DIRECTA en unidades de administración (no masa). */
+export function esUnidadDosisDirecta(u: UnidadDosis): u is UnidadDosisDirecta {
+  return u === "puff";
+}
+
 // ─── Limpieza de float ───────────────────────────────────────────────────────
 
 /**
@@ -119,7 +140,7 @@ export function normalizarConcentracion(valor: number, unidad: UnidadConcentraci
   return limpiarFloat(valor * FACTOR_CONCENTRACION[unidad]);
 }
 
-export function normalizarDosis(valor: number, unidad: UnidadDosis): number {
+export function normalizarDosis(valor: number, unidad: UnidadDosisMasa): number {
   return limpiarFloat(valor * FACTOR_DOSIS[unidad]);
 }
 
