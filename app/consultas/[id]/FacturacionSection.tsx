@@ -12,24 +12,55 @@ interface Factura {
   errores: unknown | null;
 }
 
+/** Texto legible de un error individual del SRI (varios formatos posibles). */
+function textoDeError(e: unknown): string | null {
+  if (typeof e === "string") return e.trim() || null;
+  if (e && typeof e === "object") {
+    const o = e as Record<string, unknown>;
+    // Campos que usa el SRI / AutorizadorEC: mensaje, message, error,
+    // informacionAdicional, informationAdditional, tipo, identificador, codigo.
+    const msg = o.mensaje ?? o.message ?? o.error ?? o.motivo;
+    const info = o.informacionAdicional ?? o.informationAdditional ?? o.additionalInformation;
+    const partes = [msg, info].filter(
+      (x): x is string => typeof x === "string" && x.trim().length > 0
+    );
+    if (partes.length > 0) return partes.join(" — ");
+    // Último recurso: mostrar el objeto crudo para no perder el motivo real.
+    try {
+      const json = JSON.stringify(e);
+      if (json && json !== "{}") return json;
+    } catch {
+      /* ignore */
+    }
+  }
+  return null;
+}
+
 /** Extrae un mensaje legible del jsonb `errores` de forma defensiva. */
 function extraerMensajeError(errores: unknown): string | null {
   if (!errores) return null;
-  if (typeof errores === "string") return errores;
+  if (typeof errores === "string") return errores.trim() || null;
   if (typeof errores === "object") {
     const obj = errores as Record<string, unknown>;
-    // Forma { errores: [...] } o { errores, mensaje } guardada por el motor.
-    const directo = obj.mensaje ?? obj.message;
-    if (typeof directo === "string" && directo.trim()) return directo;
+    // Mensaje directo a nivel raíz.
+    const directo = textoDeError(obj);
+    // Lista de errores: junta hasta los primeros 3.
     const lista = obj.errores;
     if (Array.isArray(lista) && lista.length > 0) {
-      const e = lista[0];
-      if (typeof e === "string") return e;
-      if (e && typeof e === "object") {
-        const eo = e as Record<string, unknown>;
-        const m = eo.mensaje ?? eo.message ?? eo.error;
-        if (typeof m === "string" && m.trim()) return m;
-      }
+      const textos = lista
+        .map(textoDeError)
+        .filter((x): x is string => !!x)
+        .slice(0, 3);
+      if (textos.length > 0) return textos.join(" · ");
+    }
+    // Si la raíz tenía un mensaje pero no era solo el JSON completo, úsalo.
+    if (directo && directo !== JSON.stringify(obj)) return directo;
+    // Último recurso: JSON crudo (así el médico ve algo aunque sea técnico).
+    try {
+      const json = JSON.stringify(errores);
+      if (json && json !== "{}" && json !== "[]") return json;
+    } catch {
+      /* ignore */
     }
   }
   return null;

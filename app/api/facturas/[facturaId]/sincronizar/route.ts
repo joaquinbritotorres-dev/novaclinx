@@ -108,10 +108,18 @@ export async function POST(
       return NextResponse.json({ estado: "autorizada", cambio: true }, { status: 200 });
     }
 
+    // Preserva TODO lo que devuelve el SRI para no perder el motivo real del
+    // rechazo (a veces no viene en `errores`, sino en otros campos del doc).
+    const erroresPayload = {
+      errores: doc.errores ?? [],
+      mensaje: typeof doc.mensaje === "string" ? doc.mensaje : null,
+      detalle: doc,
+    };
+
     if (estado === "REJECTED") {
       await service
         .from("facturas")
-        .update({ estado: "rechazada", clave_acceso: claveAcceso, errores: { errores: doc.errores ?? [] } })
+        .update({ estado: "rechazada", clave_acceso: claveAcceso, errores: erroresPayload })
         .eq("id", f.id);
       return NextResponse.json({ estado: "rechazada", cambio: true }, { status: 200 });
     }
@@ -119,7 +127,7 @@ export async function POST(
     if (estado === "FAILED") {
       await service
         .from("facturas")
-        .update({ estado: "fallida", clave_acceso: claveAcceso, errores: { errores: doc.errores ?? [] } })
+        .update({ estado: "fallida", clave_acceso: claveAcceso, errores: erroresPayload })
         .eq("id", f.id);
       return NextResponse.json({ estado: "fallida", cambio: true }, { status: 200 });
     }

@@ -94,7 +94,9 @@ export async function POST(request: NextRequest) {
         paciente_id,
         pacientes (
           identificacion,
-          tipo_identificacion
+          tipo_identificacion,
+          direccion,
+          email
         )
       `)
       .eq("id", consulta_id)
@@ -107,6 +109,8 @@ export async function POST(request: NextRequest) {
     const paciente = consulta.pacientes as unknown as {
       identificacion: string | null;
       tipo_identificacion: "04" | "05" | "06" | "07" | null;
+      direccion: string | null;
+      email: string | null;
     } | null;
 
     // 5) REGLA DE LA CÉDULA — fallar rápido con mensaje claro.
@@ -168,6 +172,10 @@ export async function POST(request: NextRequest) {
           tipoIdentificacion: pagador_tipo_identificacion as "04" | "05" | "06",
           identificacion: (pagador_identificacion as string).trim(),
           razonSocial: (pagador_nombre as string).trim(),
+          // El pagador (padre/madre) convive con el paciente: se usa su dirección
+          // y correo para el comprador. El SRI puede rechazar si van vacíos.
+          direccion: paciente?.direccion?.trim() || undefined,
+          email: paciente?.email?.trim() || undefined,
         }
       : undefined;
 
