@@ -76,6 +76,15 @@ function extraerPesoKg(dosis: string, indicacion?: string | null): string {
   return "";
 }
 
+/** Detecta prescripción "a demanda" (PRN): sin tomas fijas, no se calcula la
+ *  cantidad total automáticamente; el médico indica cuánto dispensar. */
+function detectarPRN(frecuencia: string, dosis: string, indicacion?: string | null): boolean {
+  const txt = `${frecuencia} ${dosis} ${indicacion ?? ""}`.toLowerCase();
+  return /seg[uú]n necesidad|a demanda|si precisa|si es necesario|raz[oó]n necesaria|\bprn\b/.test(
+    txt
+  );
+}
+
 export default function MedicamentoCard({ med, index, onConfirmar, disabled }: Props) {
   const dosisParsed = useMemo(() => parsearDosis(med.dosis), [med.dosis]);
   const tomasIniciales = useMemo(() => parsearTomasPorDia(med.frecuencia), [med.frecuencia]);
@@ -113,6 +122,11 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
   const [tomas, setTomas] = useState(String(tomasIniciales));
   const [tamano, setTamano] = useState("");
   const [esPorPeso, setEsPorPeso] = useState(() => dosisParsed.esPorPeso);
+  // "Según necesidad" (PRN): sin tomas fijas; el médico indica cuánto dispensar.
+  const [segunNecesidad, setSegunNecesidad] = useState(() =>
+    detectarPRN(med.frecuencia, med.dosis, med.indicacion)
+  );
+  const [envasesADispensar, setEnvasesADispensar] = useState("1");
   const [confirmadoLocal, setConfirmadoLocal] = useState(false);
   const [cantidadTexto, setCantidadTexto] = useState("");
   // Concentración canónica (número + unidad elegidos por el médico): único punto
@@ -145,7 +159,10 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
 
   const resultado = useMemo(() => {
     const conc = parseFloat(concNum);
-    const tom = parseInt(tomas);
+    // En PRN no hay tomas ni días fijos: se usa 1/1 para obtener el volumen por
+    // toma (documentación); la CANTIDAD la indica el médico aparte.
+    const tom = segunNecesidad ? 1 : parseInt(tomas);
+    const dias = segunNecesidad ? 1 : med.duracionDias;
     const tam = parseFloat(tamano);
     if (!conc || conc <= 0 || !tom || !tam || tam <= 0) return null;
 
@@ -164,7 +181,7 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
         pesoKg: peso,
         concentracion: concBase,
         tomasPorDia: tom,
-        diasTratamiento: med.duracionDias,
+        diasTratamiento: dias,
         tamanoEnvase: tam,
         esPRN: false,
         esLiquido,
@@ -182,7 +199,7 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
         unidadesPorTomaDirectas: df,
         concentracion: concBase,
         tomasPorDia: tom,
-        diasTratamiento: med.duracionDias,
+        diasTratamiento: dias,
         tamanoEnvase: tam,
         esPRN: false,
         esLiquido,
@@ -196,20 +213,26 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
       dosisPorTomaMg: dfBase,
       concentracion: concBase,
       tomasPorDia: tom,
-      diasTratamiento: med.duracionDias,
+      diasTratamiento: dias,
       tamanoEnvase: tam,
       esPRN: false,
       esLiquido,
       esInhalador,
     });
-  }, [pesoKg, dosisMgKg, dosisFija, concNum, tomas, tamano, esPorPeso,
+  }, [pesoKg, dosisMgKg, dosisFija, concNum, tomas, tamano, esPorPeso, segunNecesidad,
       unidadConc, unidadDosis, unidadDosisPeso, esLiquido, esInhalador, med.duracionDias]);
+
+  // En PRN la cantidad la decide el médico (nº de envases a dispensar); en modo
+  // normal se calcula. Nº de envases efectivo para mostrar/confirmar.
+  const envasesManual = Math.max(1, Math.floor(parseFloat(envasesADispensar) || 0));
+  const numEnvasesFinal =
+    segunNecesidad ? envasesManual : resultado?.ok ? resultado.resultado.numEnvases : 0;
 
   function handleConfirmar() {
     if (!resultado?.ok || unidadConc === null || forma === null || !sanidad?.ok) return;
     const r = resultado.resultado;
     const tam = parseFloat(tamano);
-    const cantidad = buildCantidadTexto(r.numEnvases, tam, forma);
+    const cantidad = buildCantidadTexto(numEnvasesFinal, tam, forma);
     // Concentración canónica = número + unidad ELEGIDOS por el médico (sin cola
     // de float: usa el texto crudo del input). Único punto de verdad para
     // pantalla, DB y PDF; reemplaza el string de la IA.
@@ -223,7 +246,7 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
       unidad: forma,
       concentracion: concentracionCanonica,
       formaFarmaceutica: med.formaFarmaceutica,
-      frecuencia: med.frecuencia,
+      frecuencia: segunNecesidad ? "según necesidad" : med.frecuencia,
     });
     setCantidadTexto(cantidad);
     setConcentracionConfirmada(concentracionCanonica);
@@ -335,6 +358,20 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
         </div>
       )}
 
+      {/* Según necesidad (PRN) — sin tomas fijas; el médico indica cuánto dispensar */}
+      <label className="flex items-center gap-2 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={segunNecesidad}
+          onChange={(e) => setSegunNecesidad(e.target.checked)}
+          disabled={disabled}
+          className="h-4 w-4 accent-[#0F766E]"
+        />
+        <span className="text-xs font-medium text-[#374151]">
+          Según necesidad (a demanda / PRN)
+        </span>
+      </label>
+
       {/* Dose inputs */}
       <div className="grid grid-cols-2 gap-3">
         {esPorPeso && (
@@ -440,21 +477,32 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
             </select>
           </div>
         </Field>
-        <Field label="Tomas por día">
-          <input
-            type="number"
-            value={tomas}
-            onChange={(e) => setTomas(e.target.value)}
-            min={1}
-            max={8}
-            disabled={disabled}
-            className={INPUT}
-          />
-        </Field>
+        {!segunNecesidad && (
+          <Field label="Tomas por día">
+            <input
+              type="number"
+              value={tomas}
+              onChange={(e) => setTomas(e.target.value)}
+              min={1}
+              max={8}
+              disabled={disabled}
+              className={INPUT}
+            />
+          </Field>
+        )}
       </div>
 
-      {/* Envase selector — la forma (mL/unidades/dosis) la define la medida */}
-      <Field label={forma ? `Tamaño de envase (${labelEnvase})` : "Tamaño de envase"}>
+      {/* Envase selector — la forma (mL/unidades/dosis) la define la medida.
+          En inhalador el "tamaño" son los disparos (puff) del envase, no la dosis. */}
+      <Field
+        label={
+          !forma
+            ? "Tamaño de envase"
+            : forma === "inhalador"
+              ? "Disparos por inhalador (puff)"
+              : `Tamaño de envase (${labelEnvase})`
+        }
+      >
         {forma ? (
           <div className="flex gap-1.5 flex-wrap items-center">
             {sizesDefault.map((t) => (
@@ -487,6 +535,26 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
         )}
       </Field>
 
+      {/* Cantidad a dispensar (solo PRN): sin tomas fijas, la decide el médico */}
+      {segunNecesidad && forma && (
+        <Field
+          label={`Cantidad a dispensar (${
+            forma === "inhalador" ? "inhaladores" : forma === "liquido" ? "frascos" : "envases"
+          })`}
+        >
+          <input
+            type="number"
+            value={envasesADispensar}
+            onChange={(e) => setEnvasesADispensar(e.target.value)}
+            min={1}
+            step={1}
+            disabled={disabled}
+            className={`${INPUT} w-24`}
+            aria-label="Cantidad a dispensar"
+          />
+        </Field>
+      )}
+
       {/* Calculation result */}
       {listo && resultado?.ok && (
         <div className="bg-[#F0FDF4] border border-[#86EFAC] rounded-lg px-3 py-2">
@@ -499,18 +567,21 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
                     ? ` · ${fmt(resultado.resultado.volumenOUnidadesPorToma)} mL/toma`
                     : ` · ${fmt(resultado.resultado.volumenOUnidadesPorToma)} ${resultado.resultado.volumenOUnidadesPorToma === 1 ? "comprimido" : "comprimidos"}/toma`}
                 </>}
+            {segunNecesidad && <span className="text-[#166534]/80"> · según necesidad</span>}
             {" · "}
             <strong>
-              {resultado.resultado.numEnvases}{" "}
+              {numEnvasesFinal}{" "}
               {esLiquido ? "frasco" : esInhalador ? "inhalador" : "envase"}
-              {resultado.resultado.numEnvases > 1 ? (esInhalador ? "es" : "s") : ""} de {tamano}{" "}
+              {numEnvasesFinal > 1 ? (esInhalador ? "es" : "s") : ""} de {tamano}{" "}
               {labelTotal}
+              {segunNecesidad ? " a dispensar" : ""}
             </strong>
-            {resultado.resultado.totalDispensado > resultado.resultado.totalNecesario && (
-              <span className="text-[#166534]/70">
-                {" "}({fmt(resultado.resultado.totalNecesario)} {labelTotal} necesarios)
-              </span>
-            )}
+            {!segunNecesidad &&
+              resultado.resultado.totalDispensado > resultado.resultado.totalNecesario && (
+                <span className="text-[#166534]/70">
+                  {" "}({fmt(resultado.resultado.totalNecesario)} {labelTotal} necesarios)
+                </span>
+              )}
           </p>
         </div>
       )}
