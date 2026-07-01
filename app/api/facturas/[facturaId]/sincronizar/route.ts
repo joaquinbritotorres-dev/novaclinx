@@ -50,8 +50,14 @@ export async function POST(
   if (!f) {
     return NextResponse.json({ error: "Factura no encontrada." }, { status: 404 });
   }
-  // Estados terminales: nada que sincronizar.
-  if (f.estado !== "procesando" && f.estado !== "pendiente") {
+  // Sincronizables: en proceso, o FALLIDA POR TIMEOUT (tiene clave de acceso →
+  // el documento llegó al SRI y puede autorizarse después). Una fallida sin
+  // clave nunca llegó al SRI: esa sí requiere reintentar la emisión.
+  const puedeSincronizar =
+    f.estado === "procesando" ||
+    f.estado === "pendiente" ||
+    (f.estado === "fallida" && !!f.clave_acceso);
+  if (!puedeSincronizar) {
     return NextResponse.json({ estado: f.estado }, { status: 200 });
   }
 
@@ -135,10 +141,20 @@ export async function POST(
       return NextResponse.json({ estado: "fallida", cambio: true }, { status: 200 });
     }
 
-    // PROCESSING / RECEIVED / no terminal: aún en proceso. Devuelve el estado
-    // crudo del SRI para que el médico vea si ya la recibió.
+    // PROCESSING / RECEIVED / no terminal: aún en proceso. Si venía de "fallida"
+    // por timeout, el SRI sí la tiene → la devolvemos a "procesando".
+    if (f.estado === "fallida") {
+      await service
+        .from("facturas")
+        .update({ estado: "procesando", clave_acceso: claveAcceso })
+        .eq("id", f.id);
+    }
     return NextResponse.json(
-      { estado: "procesando", cambio: false, estadoSri: estado || "desconocido" },
+      {
+        estado: "procesando",
+        cambio: f.estado === "fallida",
+        estadoSri: estado || "desconocido",
+      },
       { status: 200 }
     );
   } catch (err) {

@@ -176,7 +176,10 @@ export default function FacturacionSection({
   const estado = facturaExistente?.estado;
   const esActiva = estado === "autorizada";
   const enProceso = estado === "procesando" || estado === "pendiente";
-  const fallida = estado === "rechazada" || estado === "fallida";
+  // Fallida por TIMEOUT del SRI: el documento SÍ llegó (tiene clave de acceso).
+  // No se debe reemitir (duplicaría); se reconsulta hasta que el SRI la autorice.
+  const timeoutSri = estado === "fallida" && Boolean(facturaExistente?.clave_acceso);
+  const fallida = (estado === "rechazada" || estado === "fallida") && !timeoutSri;
 
   // Formulario de emisión / reintento (compartido).
   const formulario = (labelBoton: string) => (
@@ -309,6 +312,33 @@ export default function FacturacionSection({
             onClick={sincronizarEstado}
             disabled={sincronizando}
             className="w-full h-11 border border-[#0F766E] text-[#0F766E] hover:bg-[#F0FDFB] text-sm font-medium rounded-lg transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {sincronizando ? "Consultando…" : "Consultar estado al SRI"}
+          </button>
+          {syncMsg && <p className="text-xs text-[#64748B]">{syncMsg}</p>}
+        </div>
+      )}
+
+      {/* Timeout del SRI: el documento LLEGÓ (tiene clave de acceso). No reemitir
+          (duplicaría): reconsultar hasta que el SRI la autorice. */}
+      {facturaExistente && timeoutSri && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2 text-[#B45309] text-sm font-medium">
+            <span className="w-2 h-2 rounded-full bg-[#F59E0B]"></span>
+            El SRI no respondió a tiempo
+          </div>
+          <p className="text-xs text-[#64748B]">
+            Tu factura se firmó y <strong>llegó al SRI</strong>, pero el SRI de pruebas está lento y
+            no confirmó a tiempo. No la vuelvas a emitir (se duplicaría): consulta su estado hasta
+            que el SRI la autorice.
+          </p>
+          {facturaExistente.secuencial && (
+            <p className="text-xs text-[#5C5A54]">N° {facturaExistente.secuencial}</p>
+          )}
+          <button
+            onClick={sincronizarEstado}
+            disabled={sincronizando}
+            className="w-full h-11 bg-[#0F766E] hover:bg-[#0F766E]/90 text-white text-sm font-medium rounded-lg transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {sincronizando ? "Consultando…" : "Consultar estado al SRI"}
           </button>
