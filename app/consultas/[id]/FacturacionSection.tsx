@@ -56,6 +56,36 @@ export default function FacturacionSection({
   const [monto, setMonto] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [sincronizando, setSincronizando] = useState(false);
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
+
+  // Consulta al SRI el estado real de la factura AHORA (sin esperar al cron
+  // diario). Si ya se autorizó/rechazó, refresca para mostrar el nuevo estado.
+  async function sincronizarEstado() {
+    if (!facturaExistente) return;
+    setSincronizando(true);
+    setSyncMsg(null);
+    try {
+      const res = await fetch(`/api/facturas/${facturaExistente.id}/sincronizar`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSyncMsg(data.error || "No pudimos consultar el estado. Reintenta.");
+        return;
+      }
+      if (data.estado && data.estado !== "procesando" && data.estado !== "pendiente") {
+        router.refresh(); // ya cambió (autorizada/rechazada/fallida)
+      } else {
+        setSyncMsg("El SRI aún la está procesando. Vuelve a intentar en unos segundos.");
+      }
+    } catch {
+      setSyncMsg("Error de conexión al consultar el SRI. Reintenta.");
+    } finally {
+      setSincronizando(false);
+    }
+  }
 
   const [pagadorNombre, setPagadorNombre] = useState(pagadorInicial?.nombre ?? "");
   const [pagadorIdentificacion, setPagadorIdentificacion] = useState(pagadorInicial?.identificacion ?? "");
@@ -228,12 +258,18 @@ export default function FacturacionSection({
             <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span>
             Procesando factura… El SRI la confirmará pronto.
           </div>
+          <p className="text-xs text-[#64748B]">
+            El SRI autoriza las facturas de forma asíncrona. Toca «Consultar estado al SRI»
+            para revisar si ya se autorizó.
+          </p>
           <button
-            onClick={() => router.refresh()}
-            className="w-full h-11 border border-[#E7E3DB] text-[#5C5A54] hover:bg-[#F7F7F4] text-sm font-medium rounded-lg transition-colors inline-flex items-center justify-center gap-2"
+            onClick={sincronizarEstado}
+            disabled={sincronizando}
+            className="w-full h-11 border border-[#0F766E] text-[#0F766E] hover:bg-[#F0FDFB] text-sm font-medium rounded-lg transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            Actualizar
+            {sincronizando ? "Consultando…" : "Consultar estado al SRI"}
           </button>
+          {syncMsg && <p className="text-xs text-[#64748B]">{syncMsg}</p>}
         </div>
       )}
 
