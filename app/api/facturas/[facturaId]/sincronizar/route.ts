@@ -76,7 +76,10 @@ export async function POST(
 
     // Aún no existe en el proveedor / sin identificador → sigue en procesando.
     if (!doc) {
-      return NextResponse.json({ estado: "procesando", cambio: false }, { status: 200 });
+      return NextResponse.json(
+        { estado: "procesando", cambio: false, estadoSri: "aún no visible en el SRI" },
+        { status: 200 }
+      );
     }
 
     const estado = (doc.estado ?? "").toUpperCase();
@@ -132,8 +135,12 @@ export async function POST(
       return NextResponse.json({ estado: "fallida", cambio: true }, { status: 200 });
     }
 
-    // PROCESSING / RECEIVED / no terminal: aún en proceso.
-    return NextResponse.json({ estado: "procesando", cambio: false }, { status: 200 });
+    // PROCESSING / RECEIVED / no terminal: aún en proceso. Devuelve el estado
+    // crudo del SRI para que el médico vea si ya la recibió.
+    return NextResponse.json(
+      { estado: "procesando", cambio: false, estadoSri: estado || "desconocido" },
+      { status: 200 }
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[facturas/sincronizar] factura=${facturaId}: ${message}`);

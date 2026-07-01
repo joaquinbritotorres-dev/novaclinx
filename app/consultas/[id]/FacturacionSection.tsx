@@ -109,7 +109,11 @@ export default function FacturacionSection({
       if (data.estado && data.estado !== "procesando" && data.estado !== "pendiente") {
         router.refresh(); // ya cambió (autorizada/rechazada/fallida)
       } else {
-        setSyncMsg("El SRI aún la está procesando. Vuelve a intentar en unos segundos.");
+        const sri = typeof data.estadoSri === "string" ? data.estadoSri : null;
+        setSyncMsg(
+          `El SRI aún la está procesando${sri ? ` (estado en el SRI: ${sri})` : ""}. ` +
+            "Puede tardar unos minutos en pruebas; vuelve a consultar en un rato."
+        );
       }
     } catch {
       setSyncMsg("Error de conexión al consultar el SRI. Reintenta.");
