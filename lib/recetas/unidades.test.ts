@@ -4,6 +4,8 @@ import {
   FACTOR_DOSIS,
   FACTOR_DOSIS_PESO,
   formaDeUnidadConcentracion,
+  dosisOpcionesPorForma,
+  esUnidadDosisDirecta,
   limpiarFloat,
   normalizarConcentracion,
   normalizarDosis,
@@ -191,5 +193,64 @@ describe("equivalencia — normalizar mcg ≡ ingresar en mg", () => {
     const viaMgMl = calcularDispensacion({ ...base, concentracion: 50 });
     expect(viaUnidades).toEqual(viaMgMl);
     expect(viaUnidades.ok && viaUnidades.resultado.volumenOUnidadesPorToma).toBe(11); // 11 mL
+  });
+});
+
+describe("dosisOpcionesPorForma / esUnidadDosisDirecta", () => {
+  it("inhalador → puff (directa)", () => {
+    expect(dosisOpcionesPorForma("inhalador")).toEqual(["puff"]);
+  });
+  it("líquido → masa + mL directo", () => {
+    expect(dosisOpcionesPorForma("liquido")).toEqual(["mcg", "mg", "g", "mL"]);
+  });
+  it("comprimido → masa + tableta directa", () => {
+    expect(dosisOpcionesPorForma("comprimido")).toEqual(["mcg", "mg", "g", "tableta"]);
+  });
+  it("directas: puff, mL, tableta", () => {
+    expect(esUnidadDosisDirecta("puff")).toBe(true);
+    expect(esUnidadDosisDirecta("mL")).toBe(true);
+    expect(esUnidadDosisDirecta("tableta")).toBe(true);
+  });
+  it("masa NO es directa", () => {
+    expect(esUnidadDosisDirecta("mg")).toBe(false);
+    expect(esUnidadDosisDirecta("mcg")).toBe(false);
+    expect(esUnidadDosisDirecta("g")).toBe(false);
+  });
+});
+
+describe("calcularDispensacion — dosis directa en mL (jarabe) y tableta", () => {
+  it("5 mL/toma directo, c/8h × 7 días, frasco 120 mL → 105 mL, 1 frasco", () => {
+    const r = calcularDispensacion({
+      unidadesPorTomaDirectas: 5,
+      concentracion: 50, // 250 mg/5 mL (solo documenta)
+      tomasPorDia: 3,
+      diasTratamiento: 7,
+      tamanoEnvase: 120,
+      esPRN: false,
+      esLiquido: true,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.resultado.volumenOUnidadesPorToma).toBe(5); // 5 mL directos
+      expect(r.resultado.totalNecesario).toBe(105); // 5 × 3 × 7
+      expect(r.resultado.numEnvases).toBe(1); // ceil(105/120)
+    }
+  });
+
+  it("1 tableta/toma directo, c/12h × 10 días, caja 20 → 20 tabletas, 1 caja", () => {
+    const r = calcularDispensacion({
+      unidadesPorTomaDirectas: 1,
+      concentracion: 500,
+      tomasPorDia: 2,
+      diasTratamiento: 10,
+      tamanoEnvase: 20,
+      esPRN: false,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.resultado.volumenOUnidadesPorToma).toBe(1);
+      expect(r.resultado.totalNecesario).toBe(20);
+      expect(r.resultado.numEnvases).toBe(1);
+    }
   });
 });

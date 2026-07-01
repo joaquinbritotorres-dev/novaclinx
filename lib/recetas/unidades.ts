@@ -31,8 +31,8 @@ export type UnidadConcentracion =
  *  concentración para obtener las unidades de administración. */
 export type UnidadDosisMasa = "mcg" | "mg" | "g";
 /** Dosis DIRECTA en la unidad de administración: el médico dice cuántas por toma
- *  (ej. 2 puff) y NO se divide por concentración. */
-export type UnidadDosisDirecta = "puff";
+ *  (ej. 2 puff, 5 mL, 1 tableta) y NO se divide por concentración. */
+export type UnidadDosisDirecta = "puff" | "mL" | "tableta";
 export type UnidadDosis = UnidadDosisMasa | UnidadDosisDirecta;
 
 export type UnidadDosisPeso = "mg/kg/día" | "mcg/kg/día";
@@ -111,12 +111,13 @@ export const DOSIS_PESO_OPCIONES: UnidadDosisPeso[] = ["mg/kg/día", "mcg/kg/dí
  */
 export function dosisOpcionesPorForma(forma: UnidadDispensacion): UnidadDosis[] {
   if (forma === "inhalador") return ["puff"];
-  return ["mcg", "mg", "g"];
+  if (forma === "liquido") return ["mcg", "mg", "g", "mL"];
+  return ["mcg", "mg", "g", "tableta"]; // comprimido
 }
 
 /** true si la dosis se ingresa DIRECTA en unidades de administración (no masa). */
 export function esUnidadDosisDirecta(u: UnidadDosis): u is UnidadDosisDirecta {
-  return u === "puff";
+  return u === "puff" || u === "mL" || u === "tableta";
 }
 
 // ─── Limpieza de float ───────────────────────────────────────────────────────
