@@ -55,10 +55,12 @@ interface Props {
 const SIZES_LIQUIDO = [60, 100, 150];
 const SIZES_SOLIDO = [10, 20, 30];
 const SIZES_INHALADOR = [100, 200];
+const SIZES_TOPICO = [15, 30, 60];
 
 function sizesParaUnidad(unidad: UnidadDispensacion): number[] {
   if (unidad === "liquido") return SIZES_LIQUIDO;
   if (unidad === "inhalador") return SIZES_INHALADOR;
+  if (unidad === "topico") return SIZES_TOPICO;
   return SIZES_SOLIDO;
 }
 
@@ -117,6 +119,7 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
     : null;
   const esLiquido = forma === "liquido";
   const esInhalador = forma === "inhalador";
+  const esTopico = forma === "topico";
   const sizesDefault = forma ? sizesParaUnidad(forma) : [];
 
   const [tomas, setTomas] = useState(String(tomasIniciales));
@@ -127,6 +130,9 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
     detectarPRN(med.frecuencia, med.dosis, med.indicacion)
   );
   const [envasesADispensar, setEnvasesADispensar] = useState("1");
+  // La cantidad la decide el médico (no se calcula) en PRN y SIEMPRE en tópicos
+  // (una crema no tiene "gramos por aplicación" estándar para calcular tubos).
+  const cantidadManual = segunNecesidad || esTopico;
   const [confirmadoLocal, setConfirmadoLocal] = useState(false);
   const [cantidadTexto, setCantidadTexto] = useState("");
   // Concentración canónica (número + unidad elegidos por el médico): único punto
@@ -145,24 +151,26 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
       const formaNueva = formaDeUnidadConcentracion(u);
       const sizes = sizesParaUnidad(formaNueva);
       setTamano(String(sizes[sizes.length - 1]));
-      if (formaNueva === "inhalador") setEsPorPeso(false);
+      if (formaNueva === "inhalador" || formaNueva === "topico") setEsPorPeso(false);
     } else {
       setTamano("");
     }
   }
 
   // Etiquetas de dispensación (la concentración y la dosis llevan su selector).
-  const labelEnvase = forma === "liquido" ? "mL" : forma === "inhalador" ? "dosis" : "unidades";
-  const labelTotal = forma === "liquido" ? "mL" : forma === "inhalador" ? "dosis" : "u";
+  const labelEnvase =
+    forma === "liquido" ? "mL" : forma === "inhalador" ? "dosis" : forma === "topico" ? "g" : "unidades";
+  const labelTotal =
+    forma === "liquido" ? "mL" : forma === "inhalador" ? "dosis" : forma === "topico" ? "g" : "u";
   // Unidades de dosis por toma disponibles según la forma (inhalador → puff).
   const opcionesDosis = dosisOpcionesPorForma(forma ?? "comprimido");
 
   const resultado = useMemo(() => {
     const conc = parseFloat(concNum);
-    // En PRN no hay tomas ni días fijos: se usa 1/1 para obtener el volumen por
-    // toma (documentación); la CANTIDAD la indica el médico aparte.
-    const tom = segunNecesidad ? 1 : parseInt(tomas);
-    const dias = segunNecesidad ? 1 : med.duracionDias;
+    // Con cantidad manual (PRN o tópico) no hay tomas/días fijos: se usa 1/1 para
+    // obtener el volumen por toma (documentación); la CANTIDAD la indica el médico.
+    const tom = cantidadManual ? 1 : parseInt(tomas);
+    const dias = cantidadManual ? 1 : med.duracionDias;
     const tam = parseFloat(tamano);
     if (!conc || conc <= 0 || !tom || !tam || tam <= 0) return null;
 
@@ -219,14 +227,14 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
       esLiquido,
       esInhalador,
     });
-  }, [pesoKg, dosisMgKg, dosisFija, concNum, tomas, tamano, esPorPeso, segunNecesidad,
+  }, [pesoKg, dosisMgKg, dosisFija, concNum, tomas, tamano, esPorPeso, cantidadManual,
       unidadConc, unidadDosis, unidadDosisPeso, esLiquido, esInhalador, med.duracionDias]);
 
-  // En PRN la cantidad la decide el médico (nº de envases a dispensar); en modo
+  // Con cantidad manual (PRN/tópico) la decide el médico (nº de envases); en modo
   // normal se calcula. Nº de envases efectivo para mostrar/confirmar.
   const envasesManual = Math.max(1, Math.floor(parseFloat(envasesADispensar) || 0));
   const numEnvasesFinal =
-    segunNecesidad ? envasesManual : resultado?.ok ? resultado.resultado.numEnvases : 0;
+    cantidadManual ? envasesManual : resultado?.ok ? resultado.resultado.numEnvases : 0;
 
   function handleConfirmar() {
     if (!resultado?.ok || unidadConc === null || forma === null || !sanidad?.ok) return;
@@ -325,8 +333,8 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
       </div>
 
       {/* Tipo de cálculo — el médico puede cambiar lo que infirió la IA. En
-          inhalador no aplica dosificar por peso: se prescribe en puff. */}
-      {forma !== "inhalador" && (
+          inhalador/tópico no aplica dosificar por peso. */}
+      {forma !== "inhalador" && forma !== "topico" && (
         <div>
           <span className="text-xs font-medium text-[#374151]">Tipo de dosis</span>
           <div className="mt-1 inline-flex items-center gap-0.5 rounded-lg bg-[#F1F5F9] p-0.5">
@@ -477,7 +485,7 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
             </select>
           </div>
         </Field>
-        {!segunNecesidad && (
+        {!cantidadManual && (
           <Field label="Tomas por día">
             <input
               type="number"
@@ -500,7 +508,9 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
             ? "Tamaño de envase"
             : forma === "inhalador"
               ? "Disparos por inhalador (puff)"
-              : `Tamaño de envase (${labelEnvase})`
+              : forma === "topico"
+                ? "Tamaño del tubo (g)"
+                : `Tamaño de envase (${labelEnvase})`
         }
       >
         {forma ? (
@@ -535,11 +545,17 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
         )}
       </Field>
 
-      {/* Cantidad a dispensar (solo PRN): sin tomas fijas, la decide el médico */}
-      {segunNecesidad && forma && (
+      {/* Cantidad a dispensar (PRN o tópico): sin tomas fijas, la decide el médico */}
+      {cantidadManual && forma && (
         <Field
           label={`Cantidad a dispensar (${
-            forma === "inhalador" ? "inhaladores" : forma === "liquido" ? "frascos" : "envases"
+            forma === "inhalador"
+              ? "inhaladores"
+              : forma === "liquido"
+                ? "frascos"
+                : forma === "topico"
+                  ? "tubos"
+                  : "envases"
           })`}
         >
           <input
@@ -561,22 +577,24 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
           <p className="text-sm font-medium text-[#166534]">
             {esInhalador
               ? `${fmt(resultado.resultado.volumenOUnidadesPorToma)} ${resultado.resultado.volumenOUnidadesPorToma === 1 ? "puff" : "puffs"}/toma`
-              : <>
-                  {fmt(resultado.resultado.dosisPorTomaMg)} mg/toma
-                  {esLiquido
-                    ? ` · ${fmt(resultado.resultado.volumenOUnidadesPorToma)} mL/toma`
-                    : ` · ${fmt(resultado.resultado.volumenOUnidadesPorToma)} ${resultado.resultado.volumenOUnidadesPorToma === 1 ? "comprimido" : "comprimidos"}/toma`}
-                </>}
+              : esTopico
+                ? `${fmt(resultado.resultado.volumenOUnidadesPorToma)} ${resultado.resultado.volumenOUnidadesPorToma === 1 ? "aplicación" : "aplicaciones"}/toma`
+                : <>
+                    {fmt(resultado.resultado.dosisPorTomaMg)} mg/toma
+                    {esLiquido
+                      ? ` · ${fmt(resultado.resultado.volumenOUnidadesPorToma)} mL/toma`
+                      : ` · ${fmt(resultado.resultado.volumenOUnidadesPorToma)} ${resultado.resultado.volumenOUnidadesPorToma === 1 ? "comprimido" : "comprimidos"}/toma`}
+                  </>}
             {segunNecesidad && <span className="text-[#166534]/80"> · según necesidad</span>}
             {" · "}
             <strong>
               {numEnvasesFinal}{" "}
-              {esLiquido ? "frasco" : esInhalador ? "inhalador" : "envase"}
+              {esLiquido ? "frasco" : esInhalador ? "inhalador" : esTopico ? "tubo" : "envase"}
               {numEnvasesFinal > 1 ? (esInhalador ? "es" : "s") : ""} de {tamano}{" "}
               {labelTotal}
-              {segunNecesidad ? " a dispensar" : ""}
+              {cantidadManual ? " a dispensar" : ""}
             </strong>
-            {!segunNecesidad &&
+            {!cantidadManual &&
               resultado.resultado.totalDispensado > resultado.resultado.totalNecesario && (
                 <span className="text-[#166534]/70">
                   {" "}({fmt(resultado.resultado.totalNecesario)} {labelTotal} necesarios)

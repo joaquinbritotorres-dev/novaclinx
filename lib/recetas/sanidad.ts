@@ -25,6 +25,8 @@ export const MAX_POR_TOMA: Record<UnidadDispensacion, number> = {
   // Dosis pediátrica/adulto grande ~30 mL/toma; 60 mL (medio frasco de una vez)
   // no corresponde a ninguna pauta.
   liquido: 60,
+  // Tópico: la "dosis" son aplicaciones/toma; más de 20 no tiene sentido.
+  topico: 20,
 };
 
 /** Respaldo: nº de envases imposible. Muy alto a propósito (escala con duración). */
@@ -34,12 +36,14 @@ const TERMINO_POR_TOMA: Record<UnidadDispensacion, string> = {
   inhalador: "puffs por toma",
   comprimido: "comprimidos por toma",
   liquido: "mL por toma",
+  topico: "aplicaciones por toma",
 };
 
 const TERMINO_ENVASE: Record<UnidadDispensacion, [string, string]> = {
   liquido: ["frasco", "frascos"],
   comprimido: ["envase", "envases"],
   inhalador: ["inhalador", "inhaladores"],
+  topico: ["tubo", "tubos"],
 };
 
 export interface ChequeoSanidad {

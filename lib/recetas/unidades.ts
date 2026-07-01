@@ -25,14 +25,16 @@ export type UnidadConcentracion =
   | "mg"
   | "g"
   | "mcg/puff"
-  | "mg/puff";
+  | "mg/puff"
+  | "mg/g"
+  | "%";
 
 /** Dosis por MASA: se normaliza a mg y la calculadora la divide por la
  *  concentración para obtener las unidades de administración. */
 export type UnidadDosisMasa = "mcg" | "mg" | "g";
 /** Dosis DIRECTA en la unidad de administración: el médico dice cuántas por toma
- *  (ej. 2 puff, 5 mL, 1 tableta) y NO se divide por concentración. */
-export type UnidadDosisDirecta = "puff" | "mL" | "tableta";
+ *  (ej. 2 puff, 5 mL, 1 tableta, 1 aplicación) y NO se divide por concentración. */
+export type UnidadDosisDirecta = "puff" | "mL" | "tableta" | "aplicacion";
 export type UnidadDosis = UnidadDosisMasa | UnidadDosisDirecta;
 
 export type UnidadDosisPeso = "mg/kg/día" | "mcg/kg/día";
@@ -51,6 +53,10 @@ export const FACTOR_CONCENTRACION: Record<UnidadConcentracion, number> = {
   g: 1000,
   "mcg/puff": 0.001, // 100 mcg/puff = 0.1 mg/puff
   "mg/puff": 1,
+  // Tópicos: solo documentan la concentración; la cantidad (tubos) es manual,
+  // así que estos factores no intervienen en ningún cálculo de dispensación.
+  "mg/g": 1,
+  "%": 10, // 1% p/p = 10 mg/g (exacto)
 };
 
 /** Dosis por toma (por masa) → mg. */
@@ -81,6 +87,7 @@ export const CONCENTRACION_GRUPOS: GrupoConcentracion[] = [
   { label: "Líquido (por mL)", unidades: ["mcg/mL", "mg/mL", "mg/2 mL", "mg/5 mL", "mg/10 mL"] },
   { label: "Comprimido / cápsula (por unidad)", unidades: ["mcg", "mg", "g"] },
   { label: "Inhalador (por puff)", unidades: ["mcg/puff", "mg/puff"] },
+  { label: "Crema / tópico", unidades: ["mg/g", "%"] },
 ];
 
 /** Forma de dispensación implícita en la unidad de concentración elegida. */
@@ -95,6 +102,8 @@ const FORMA_DE_CONCENTRACION: Record<UnidadConcentracion, UnidadDispensacion> = 
   g: "comprimido",
   "mcg/puff": "inhalador",
   "mg/puff": "inhalador",
+  "mg/g": "topico",
+  "%": "topico",
 };
 
 export function formaDeUnidadConcentracion(u: UnidadConcentracion): UnidadDispensacion {
@@ -111,13 +120,14 @@ export const DOSIS_PESO_OPCIONES: UnidadDosisPeso[] = ["mg/kg/día", "mcg/kg/dí
  */
 export function dosisOpcionesPorForma(forma: UnidadDispensacion): UnidadDosis[] {
   if (forma === "inhalador") return ["puff"];
+  if (forma === "topico") return ["aplicacion"];
   if (forma === "liquido") return ["mcg", "mg", "g", "mL"];
   return ["mcg", "mg", "g", "tableta"]; // comprimido
 }
 
 /** true si la dosis se ingresa DIRECTA en unidades de administración (no masa). */
 export function esUnidadDosisDirecta(u: UnidadDosis): u is UnidadDosisDirecta {
-  return u === "puff" || u === "mL" || u === "tableta";
+  return u === "puff" || u === "mL" || u === "tableta" || u === "aplicacion";
 }
 
 // ─── Limpieza de float ───────────────────────────────────────────────────────

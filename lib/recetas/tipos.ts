@@ -5,7 +5,7 @@
  *  - "comprimido": tableta/cápsula   → comprimidos (math entera).
  *  - "inhalador":  aerosol/spray     → puffs (misma math que sólido, sin redondeo).
  */
-export type UnidadDispensacion = "liquido" | "comprimido" | "inhalador";
+export type UnidadDispensacion = "liquido" | "comprimido" | "inhalador" | "topico";
 
 export interface MedicamentoPropuesto {
   dci: string;

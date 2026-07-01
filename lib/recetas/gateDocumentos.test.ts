@@ -215,4 +215,19 @@ describe("formatearDosisConfirmada (números y letras AM 00031-2020)", () => {
     });
     expect(conUnidad).toBe(sinUnidad);
   });
+
+  it("tópico — aplicaciones en números y letras", () => {
+    expect(
+      formatearDosisConfirmada({
+        dosisPorTomaMg: 0,
+        volumenOUnidadesPorToma: 1,
+        esLiquido: false,
+        unidad: "topico",
+        concentracion: "1%",
+        formaFarmaceutica: "crema",
+        frecuencia: "c/12h",
+      })
+    ).toBe("1 aplicación (una aplicación) de crema 1%, cada 12 horas");
+  });
 });
+

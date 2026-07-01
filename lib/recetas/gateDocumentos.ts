@@ -162,6 +162,14 @@ export function formatearDosisConfirmada(d: DosisConfirmada): string {
     return `${cant} ${palabra} (${letrasCant} ${palabra}) de ${d.formaFarmaceutica} ${d.concentracion}, ${freq}`;
   }
 
+  if (unidad === "topico") {
+    // Tópico: se cuenta en aplicaciones, no en mg (la concentración documenta).
+    const cantEntero = Number.isInteger(cant) ? cant : Math.round(cant);
+    const letrasCant = cantEntero === 1 ? "una" : numeroALetras(cantEntero);
+    const palabra = cant === 1 ? "aplicación" : "aplicaciones";
+    return `${cant} ${palabra} (${letrasCant} ${palabra}) de ${d.formaFarmaceutica} ${d.concentracion}, ${freq}`;
+  }
+
   const mg = Math.round(d.dosisPorTomaMg * 100) / 100;
   const mgEntero = Number.isInteger(mg) ? mg : Math.round(mg);
   const letras = numeroALetras(mgEntero);

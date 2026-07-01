@@ -54,6 +54,7 @@ describe("tablas de factores — valores exactos", () => {
       "mcg/mL": 0.001, "mg/mL": 1, "mg/2 mL": 0.5, "mg/5 mL": 0.2, "mg/10 mL": 0.1,
       mcg: 0.001, mg: 1, g: 1000,
       "mcg/puff": 0.001, "mg/puff": 1,
+      "mg/g": 1, "%": 10, // tópicos: 1% p/p = 10 mg/g (exacto)
     });
   });
   it("dosis", () => expect(FACTOR_DOSIS).toEqual({ mg: 1, mcg: 0.001, g: 1000 }));
@@ -252,5 +253,16 @@ describe("calcularDispensacion — dosis directa en mL (jarabe) y tableta", () =
       expect(r.resultado.totalNecesario).toBe(20);
       expect(r.resultado.numEnvases).toBe(1);
     }
+  });
+});
+
+describe("tópico / crema", () => {
+  it("% y mg/g derivan forma tópico", () => {
+    expect(formaDeUnidadConcentracion("%")).toBe("topico");
+    expect(formaDeUnidadConcentracion("mg/g")).toBe("topico");
+  });
+  it("dosis tópica → aplicación (directa)", () => {
+    expect(dosisOpcionesPorForma("topico")).toEqual(["aplicacion"]);
+    expect(esUnidadDosisDirecta("aplicacion")).toBe(true);
   });
 });

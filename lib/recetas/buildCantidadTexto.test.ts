@@ -29,3 +29,12 @@ describe("buildCantidadTexto — cantidad a dispensar (AM 00031-2020)", () => {
     });
   });
 });
+
+describe("buildCantidadTexto — tópico", () => {
+  it("1 tubo de 30 g", () => {
+    expect(buildCantidadTexto(1, 30, "topico")).toBe("1 (un) tubo de 30 g");
+  });
+  it("2 tubos de 15 g", () => {
+    expect(buildCantidadTexto(2, 15, "topico")).toBe("2 (dos) tubos de 15 g");
+  });
+});
