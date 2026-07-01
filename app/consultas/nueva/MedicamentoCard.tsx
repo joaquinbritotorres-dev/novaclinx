@@ -18,6 +18,7 @@ import {
   CONCENTRACION_GRUPOS,
   DOSIS_PESO_OPCIONES,
   dosisOpcionesPorForma,
+  esDosisPesoPorToma,
   esUnidadDosisDirecta,
   formaDeUnidadConcentracion,
   normalizarConcentracion,
@@ -184,17 +185,20 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
       if (!peso || peso <= 0 || !dkg || dkg <= 0) return null;
       if (unidadDosisPeso === null) return null;
       const dkgBase = normalizarDosisPeso(dkg, unidadDosisPeso);
-      return calcularDispensacion({
-        dosisMgKgDia: dkgBase,
+      const comun = {
         pesoKg: peso,
         concentracion: concBase,
         tomasPorDia: tom,
         diasTratamiento: dias,
         tamanoEnvase: tam,
-        esPRN: false,
+        esPRN: false as const,
         esLiquido,
         esInhalador,
-      });
+      };
+      // mg/kg/dosis → por toma (no divide); mg/kg/día → diaria (se reparte).
+      return esDosisPesoPorToma(unidadDosisPeso)
+        ? calcularDispensacion({ ...comun, dosisMgKgPorToma: dkgBase })
+        : calcularDispensacion({ ...comun, dosisMgKgDia: dkgBase });
     }
 
     const df = parseFloat(dosisFija);

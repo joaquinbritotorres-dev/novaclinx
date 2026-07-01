@@ -45,8 +45,12 @@ export interface EntradaCalculadora {
    *  Si viene, es el volumen/unidades por toma tal cual — NO se divide por la
    *  concentración (la concentración solo documenta la dosis en mg). */
   unidadesPorTomaDirectas?: number;
-  /** Dosis en mg/kg/día (requiere pesoKg) */
+  /** Dosis en mg/kg/día (requiere pesoKg): la dosis DIARIA se reparte entre las
+   *  tomas → dosisPorToma = (dosisMgKgDia × peso) / tomasPorDia. */
   dosisMgKgDia?: number;
+  /** Dosis en mg/kg POR TOMA (mg/kg/dosis; requiere pesoKg): cada toma es
+   *  dosisMgKgPorToma × peso, SIN dividir entre las tomas. */
+  dosisMgKgPorToma?: number;
   /** Peso del paciente en kg */
   pesoKg?: number;
   /** Concentración: mg/mL para líquidos, mg por unidad para sólidos */
@@ -110,14 +114,18 @@ export function calcularDispensacion(entrada: EntradaCalculadora): ResultadoCalc
     // Modo por MASA: dosis en mg (directa o derivada de mg/kg/día) ÷ concentración.
     if (entrada.dosisPorTomaMg !== undefined) {
       dosisPorTomaMg = entrada.dosisPorTomaMg;
+    } else if (entrada.dosisMgKgPorToma !== undefined && entrada.pesoKg !== undefined) {
+      // mg/kg/dosis: cada toma es la dosis por kilo × peso, SIN dividir.
+      dosisPorTomaMg = entrada.dosisMgKgPorToma * entrada.pesoKg;
     } else if (entrada.dosisMgKgDia !== undefined && entrada.pesoKg !== undefined) {
+      // mg/kg/día: la dosis diaria se reparte entre las tomas del día.
       const dosisDiariaMg = entrada.dosisMgKgDia * entrada.pesoKg;
       dosisPorTomaMg = dosisDiariaMg / entrada.tomasPorDia;
     } else {
       return {
         ok: false,
         requiereCantidadManual: false,
-        razon: "Debe proveer dosisPorTomaMg, unidadesPorTomaDirectas o dosisMgKgDia + pesoKg",
+        razon: "Debe proveer dosisPorTomaMg, unidadesPorTomaDirectas, dosisMgKgDia o dosisMgKgPorToma + pesoKg",
       };
     }
 

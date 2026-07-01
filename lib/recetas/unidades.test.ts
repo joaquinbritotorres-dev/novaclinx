@@ -6,6 +6,7 @@ import {
   formaDeUnidadConcentracion,
   dosisOpcionesPorForma,
   esUnidadDosisDirecta,
+  esDosisPesoPorToma,
   limpiarFloat,
   normalizarConcentracion,
   normalizarDosis,
@@ -59,7 +60,12 @@ describe("tablas de factores — valores exactos", () => {
   });
   it("dosis", () => expect(FACTOR_DOSIS).toEqual({ mg: 1, mcg: 0.001, g: 1000 }));
   it("dosis por peso", () =>
-    expect(FACTOR_DOSIS_PESO).toEqual({ "mg/kg/día": 1, "mcg/kg/día": 0.001 }));
+    expect(FACTOR_DOSIS_PESO).toEqual({
+      "mg/kg/día": 1,
+      "mcg/kg/día": 0.001,
+      "mg/kg/dosis": 1,
+      "mcg/kg/dosis": 0.001,
+    }));
 });
 
 describe("formaDeUnidadConcentracion — la medida implica la forma", () => {
@@ -264,5 +270,56 @@ describe("tópico / crema", () => {
   it("dosis tópica → aplicación (directa)", () => {
     expect(dosisOpcionesPorForma("topico")).toEqual(["aplicacion"]);
     expect(esUnidadDosisDirecta("aplicacion")).toBe(true);
+  });
+});
+
+describe("esDosisPesoPorToma — por dosis (no divide) vs por día (reparte)", () => {
+  it("mg/kg/dosis y mcg/kg/dosis → por toma", () => {
+    expect(esDosisPesoPorToma("mg/kg/dosis")).toBe(true);
+    expect(esDosisPesoPorToma("mcg/kg/dosis")).toBe(true);
+  });
+  it("mg/kg/día y mcg/kg/día → NO por toma (se reparte)", () => {
+    expect(esDosisPesoPorToma("mg/kg/día")).toBe(false);
+    expect(esDosisPesoPorToma("mcg/kg/día")).toBe(false);
+  });
+});
+
+describe("calcularDispensacion — mg/kg/dosis (por toma) vs mg/kg/día (diaria)", () => {
+  const base = {
+    pesoKg: 20,
+    concentracion: 50, // mg/mL
+    tomasPorDia: 4,
+    diasTratamiento: 7,
+    tamanoEnvase: 150,
+    esPRN: false as const,
+    esLiquido: true,
+  };
+
+  it("mg/kg/dosis NO divide entre tomas: 15 mg/kg/dosis × 20 kg = 300 mg/toma", () => {
+    const r = calcularDispensacion({ ...base, dosisMgKgPorToma: 15 });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.resultado.dosisPorTomaMg).toBe(300); // 15 × 20
+      expect(r.resultado.volumenOUnidadesPorToma).toBe(6); // 300 / 50
+    }
+  });
+
+  it("mg/kg/día SÍ divide entre tomas: (15 × 20) / 4 = 75 mg/toma", () => {
+    const r = calcularDispensacion({ ...base, dosisMgKgDia: 15 });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.resultado.dosisPorTomaMg).toBe(75); // (15 × 20) / 4
+      expect(r.resultado.volumenOUnidadesPorToma).toBe(1.5); // 75 / 50
+    }
+  });
+
+  it("con mismas cifras, /dosis da 4× la dosis por toma que /día (a 4 tomas)", () => {
+    const porDosis = calcularDispensacion({ ...base, dosisMgKgPorToma: 15 });
+    const porDia = calcularDispensacion({ ...base, dosisMgKgDia: 15 });
+    if (porDosis.ok && porDia.ok) {
+      expect(porDosis.resultado.dosisPorTomaMg).toBe(
+        porDia.resultado.dosisPorTomaMg * 4
+      );
+    }
   });
 });

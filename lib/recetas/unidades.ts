@@ -37,7 +37,14 @@ export type UnidadDosisMasa = "mcg" | "mg" | "g";
 export type UnidadDosisDirecta = "puff" | "mL" | "tableta" | "aplicacion";
 export type UnidadDosis = UnidadDosisMasa | UnidadDosisDirecta;
 
-export type UnidadDosisPeso = "mg/kg/día" | "mcg/kg/día";
+/** Dosis por peso. "…/día" = dosis DIARIA por kilo (se divide entre las tomas);
+ *  "…/dosis" = dosis POR TOMA por kilo (NO se divide). El factor de masa (mg/mcg)
+ *  es el mismo; solo cambia si se reparte entre las tomas o no. */
+export type UnidadDosisPeso =
+  | "mg/kg/día"
+  | "mcg/kg/día"
+  | "mg/kg/dosis"
+  | "mcg/kg/dosis";
 
 // ─── Factores exactos a la unidad base ───────────────────────────────────────
 
@@ -66,11 +73,21 @@ export const FACTOR_DOSIS: Record<UnidadDosisMasa, number> = {
   g: 1000,
 };
 
-/** Dosis por peso → mg/kg/día. */
+/** Dosis por peso → masa base (mg/kg). El factor solo convierte la masa; que sea
+ *  por día o por dosis lo decide esDosisPesoPorToma(). */
 export const FACTOR_DOSIS_PESO: Record<UnidadDosisPeso, number> = {
   "mg/kg/día": 1,
   "mcg/kg/día": 0.001,
+  "mg/kg/dosis": 1,
+  "mcg/kg/dosis": 0.001,
 };
+
+/** true si la dosis por peso es POR TOMA (mg/kg/dosis): la dosis por toma es
+ *  valor × peso, SIN dividir entre las tomas del día. false si es POR DÍA
+ *  (mg/kg/día): la dosis diaria se reparte entre las tomas. */
+export function esDosisPesoPorToma(unidad: UnidadDosisPeso): boolean {
+  return unidad === "mg/kg/dosis" || unidad === "mcg/kg/dosis";
+}
 
 // ─── Opciones de cada selector ───────────────────────────────────────────────
 // El médico elige la medida de UN desplegable con TODOS los tipos, agrupados.
@@ -111,7 +128,12 @@ export function formaDeUnidadConcentracion(u: UnidadConcentracion): UnidadDispen
 }
 
 export const DOSIS_OPCIONES: UnidadDosis[] = ["mcg", "mg", "g"];
-export const DOSIS_PESO_OPCIONES: UnidadDosisPeso[] = ["mg/kg/día", "mcg/kg/día"];
+export const DOSIS_PESO_OPCIONES: UnidadDosisPeso[] = [
+  "mg/kg/día",
+  "mcg/kg/día",
+  "mg/kg/dosis",
+  "mcg/kg/dosis",
+];
 
 /**
  * Unidades de dosis por toma disponibles según la forma:
