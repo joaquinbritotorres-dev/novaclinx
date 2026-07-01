@@ -326,10 +326,6 @@ export default function MedicamentoCard({ med, index, onConfirmar, disabled }: P
           {med.nombreComercial ? ` (${med.nombreComercial})` : ""}
           {" "}{med.formaFarmaceutica}
         </p>
-        <p className="text-xs text-[#64748B] mt-0.5">
-          {med.concentracion} · vía {med.via} · {med.dosis} · {med.frecuencia} · {med.duracionDias} días
-          {med.indicacion ? <> — <em>{med.indicacion}</em></> : null}
-        </p>
       </div>
 
       {/* Tipo de cálculo — el médico puede cambiar lo que infirió la IA. En

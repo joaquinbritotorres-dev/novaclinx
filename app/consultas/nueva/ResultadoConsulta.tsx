@@ -204,10 +204,10 @@ function SeccionSoapAccordion({
   resaltada: boolean;
   minRows: number;
 }) {
-  const [colapsada, setColapsada] = useState(false);
+  const [colapsada, setColapsada] = useState(true);
   const [editando, setEditando] = useState(false);
-  // Abierta por defecto; el médico puede colapsar. Si la IA integró algo aquí
-  // (resaltada), se fuerza abierta para que se vea — estado derivado, sin efecto.
+  // Colapsada por defecto; el médico expande la que quiere revisar. Si la IA
+  // integró algo aquí (resaltada), se fuerza abierta — estado derivado, sin efecto.
   const abierta = resaltada || !colapsada;
 
   return (

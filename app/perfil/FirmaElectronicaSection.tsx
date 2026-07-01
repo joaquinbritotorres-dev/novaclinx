@@ -50,12 +50,27 @@ function EyeIcon({ open }: { open: boolean }) {
   );
 }
 
+/** Traduce el motivo técnico de la activación a algo accionable para el médico. */
+function mensajeFacturacion(motivo?: string | null): string {
+  const m = (motivo ?? "").toLowerCase();
+  if (m.includes("fiscales incompletos") || m.includes("datos fiscales")) {
+    return "El certificado se guardó, pero para activar la facturación electrónica falta completar tu RUC y tu dirección de consultorio en el perfil. Complétalos y vuelve a subir el certificado.";
+  }
+  if (m.includes("email")) {
+    return "El certificado se guardó, pero falta tu correo para crear la cuenta de facturación en el SRI.";
+  }
+  return `El certificado se guardó, pero la facturación no se activó automáticamente${
+    motivo ? `: ${motivo}` : ""
+  }. Revisa tus datos fiscales e inténtalo de nuevo.`;
+}
+
 export default function FirmaElectronicaSection({ firmaInfo }: { firmaInfo: FirmaInfo }) {
   const router = useRouter();
   const [modo, setModo] = useState<"ver" | "subir" | "confirmDelete">("ver");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPass, setShowPass] = useState(false);
+  const [factAviso, setFactAviso] = useState<{ ok: boolean; texto: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const passRef = useRef<HTMLInputElement>(null);
 
@@ -81,11 +96,21 @@ export default function FirmaElectronicaSection({ firmaInfo }: { firmaInfo: Firm
       fd.append("archivo", archivo);
       fd.append("password", password);
       const res = await fetch("/api/perfil/firma", { method: "POST", body: fd });
-      const data = await res.json() as { error?: string };
+      const data = await res.json() as {
+        error?: string;
+        facturacion_activada?: boolean;
+        facturacion_motivo?: string | null;
+      };
       if (!res.ok) throw new Error(data.error ?? "No pudimos completar la acción.");
       // Limpiar el campo de contraseña de la memoria
       if (passRef.current) passRef.current.value = "";
       setModo("ver");
+      // Estado de la activación de facturación (se activa al subir el .p12).
+      setFactAviso(
+        data.facturacion_activada
+          ? { ok: true, texto: "Facturación electrónica activada. Ya puedes emitir facturas al SRI." }
+          : { ok: false, texto: mensajeFacturacion(data.facturacion_motivo) }
+      );
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No pudimos completar la acción.");
@@ -120,6 +145,27 @@ export default function FirmaElectronicaSection({ firmaInfo }: { firmaInfo: Firm
         <p role="alert" className="mb-4 text-sm text-[#DC2626] bg-[#FEE2E2] rounded-lg px-3 py-2">
           {error}
         </p>
+      )}
+
+      {factAviso && (
+        <div
+          role="status"
+          className={`mb-4 flex items-start justify-between gap-3 rounded-lg px-3 py-2.5 text-sm ${
+            factAviso.ok
+              ? "bg-[#F0FDF4] border border-[#86EFAC] text-[#166534]"
+              : "bg-[#FFFBEB] border border-[#FDE68A] text-[#92400E]"
+          }`}
+        >
+          <span>{factAviso.texto}</span>
+          <button
+            type="button"
+            onClick={() => setFactAviso(null)}
+            aria-label="Cerrar aviso"
+            className="shrink-0 opacity-60 hover:opacity-100"
+          >
+            ×
+          </button>
+        </div>
       )}
 
       {/* ── Sin firma + modo ver ── */}

@@ -69,6 +69,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No autorizado." }, { status: 403 });
     }
 
+    // 3.5) Facturación configurada y activa. Sin esto, facturarConsulta lanzaría
+    // un Error genérico → 500 opaco; aquí damos un mensaje accionable (422).
+    const { data: cfg } = await supabase
+      .from("config_facturacion")
+      .select("estado, provider_company_id")
+      .eq("medico_id", medico.id)
+      .maybeSingle();
+    if (!cfg || cfg.estado !== "activo" || !cfg.provider_company_id) {
+      return NextResponse.json(
+        {
+          error:
+            "Tu facturación electrónica aún no está activa. En tu Perfil: verifica que tu RUC y tu dirección estén completos, y vuelve a subir tu certificado .p12 para dar de alta la cuenta en el SRI.",
+        },
+        { status: 422 }
+      );
+    }
+
     // 4) Consulta del médico (dueño) + paciente.
     const { data: consulta } = await supabase
       .from("consultas")

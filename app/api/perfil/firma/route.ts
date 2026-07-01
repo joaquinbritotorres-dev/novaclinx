@@ -167,6 +167,7 @@ export async function POST(request: NextRequest) {
   // La firma de PDFs YA quedó guardada arriba. Pase lo que pase aquí, el éxito
   // de la firma se mantiene: nunca cambiamos ni bloqueamos esa respuesta.
   let facturacionActivada = false;
+  let facturacionMotivo: string | null = null;
   try {
     const r = await activarFacturacionMedico({
       medicoId: medico.id,
@@ -175,6 +176,7 @@ export async function POST(request: NextRequest) {
       email: user.email ?? undefined,
     });
     facturacionActivada = r.activada;
+    facturacionMotivo = r.motivo ?? null;
     console.log(
       `[firma POST] facturación activada=${r.activada}${r.motivo ? ` motivo=${r.motivo}` : ""} medico=${medico.id}`
     );
@@ -182,6 +184,7 @@ export async function POST(request: NextRequest) {
     // Defensa extra: activarFacturacionMedico no debería lanzar, pero por si
     // acaso, no afectamos la firma ya guardada.
     const message = err instanceof Error ? err.message : String(err);
+    facturacionMotivo = message;
     console.error(`[firma POST] activación facturación falló (no afecta firma): ${message}`);
   }
 
@@ -190,6 +193,7 @@ export async function POST(request: NextRequest) {
     titular,
     valida_hasta: validaHasta,
     facturacion_activada: facturacionActivada,
+    facturacion_motivo: facturacionMotivo,
   });
 }
 
