@@ -297,6 +297,14 @@ export default function FacturacionSection({
             El SRI autoriza las facturas de forma asíncrona. Toca «Consultar estado al SRI»
             para revisar si ya se autorizó.
           </p>
+          {/* Si la emisión falló (timeout / rechazo del proveedor), aquí está el
+              motivo por el que quedó en 'procesando'. */}
+          {extraerMensajeError(facturaExistente.errores) && (
+            <div className="text-xs text-[#92400E] bg-[#FFFBEB] border border-[#FDE68A] rounded-lg px-2.5 py-2">
+              <span className="font-medium">Detalle del proveedor: </span>
+              {extraerMensajeError(facturaExistente.errores)}
+            </div>
+          )}
           <button
             onClick={sincronizarEstado}
             disabled={sincronizando}
